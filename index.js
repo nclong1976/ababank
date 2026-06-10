@@ -1,0 +1,705 @@
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const socketio = require('socket.io');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const db = require('./db');
+const { v4: uuidv4 } = require('uuid');
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const { createServer: createViteServer } = require('vite');
+require('dotenv').config();
+
+async function startServer() {
+  const app = express();
+  app.set('trust proxy', 1);
+  app.use(cors());
+  app.use(bodyParser.json());
+
+  app.get('/api/health', async (req, res) => {
+    try {
+      await db.query('SELECT 1');
+      res.json({ ok: true, status: 'alive', db: 'connected' });
+    } catch (err) {
+      res.status(500).json({ ok: false, status: 'alive', db: 'disconnected', error: err.message });
+    }
+  });
+
+  if (process.env.NODE_ENV === 'production') {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+  }
+
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'keyboard cat',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true,
+      sameSite: 'none',
+      httpOnly: true,
+    }
+  }));
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(new GoogleStrategy({
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "/auth/callback"
+    }, (accessToken, refreshToken, profile, cb) => {
+      return cb(null, profile);
+    }));
+  } else {
+    console.warn('Google OAuth credentials missing. Auth features will be disabled.');
+  }
+
+  passport.serializeUser((user, done) => done(null, user));
+  passport.deserializeUser((obj, done) => done(null, obj));
+
+  app.get('/api/auth/url', (req, res) => {
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(501).json({ error: 'Google OAuth not configured' });
+    }
+    const redirectUri = `${req.protocol}://${req.get('host')}/auth/callback`;
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'profile email',
+    });
+    res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+  });
+
+  app.get('/auth/callback', (req, res, next) => {
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(501).send('Google OAuth not configured');
+    }
+    passport.authenticate('google', { failureRedirect: '/' })(req, res, next);
+  }, (req, res) => {
+    res.send(`
+      <html>
+        <body>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
+              window.close();
+            } else {
+              window.location.href = '/';
+            }
+          </script>
+          <p>Authentication successful. This window should close automatically.</p>
+        </body>
+      </html>
+    `);
+  });
+
+  const server = http.createServer(app);
+  const io = socketio(server, {
+    cors: { origin: '*' }
+  });
+
+  io.on('connection', socket => {
+    console.log('New connection:', socket.id);
+    
+    socket.on('register', (data) => {
+      const { role, userId } = data || {};
+      if (role === 'admin') {
+        socket.join('admin');
+        console.log('Admin registered:', socket.id);
+      } else if (userId) {
+        socket.join(`user:${userId}`);
+        console.log('User registered:', userId, socket.id);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected:', socket.id);
+    });
+  });
+
+  async function emitBalanceUpdate(userId, transactionRow, newBalance) {
+    const payload = {
+      userId,
+      transaction: transactionRow,
+      balance: newBalance
+    };
+    io.to(`user:${userId}`).emit('balance_update', payload);
+    io.to('admin').emit('user_balance_updated', payload);
+  }
+
+  app.get('/api/balance/:id', async (req, res) => {
+    const userId = req.params.id;
+    try {
+      const { rows } = await db.query('SELECT currency, balance FROM accounts WHERE user_id = $1', [userId]);
+      if (rows.length) {
+        const balances = {};
+        rows.forEach(r => {
+          balances[r.currency] = parseFloat(r.balance);
+        });
+        res.json({ ok: true, balances });
+      } else {
+        res.status(404).json({ ok: false, error: 'User accounts not found' });
+      }
+    } catch (err) {
+      console.error('Balance query error:', err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  app.get('/api/account/:id', async (req, res) => {
+    const accountNo = req.params.id;
+    const nameStr = req.query.name || '';
+    try {
+      const { rows } = await db.query('SELECT u.name, u.id FROM users u JOIN accounts a ON a.user_id = u.id WHERE u.id = $1 OR u.email = $1', [accountNo]);
+      if (rows.length) {
+        res.json({ ok: true, name: rows[0].name, accountNo });
+      } else {
+        // Mock for demo
+        res.json({ ok: true, name: nameStr || 'RECIPIENT NAME', accountNo });
+      }
+    } catch (err) {
+      res.json({ ok: true, name: nameStr || 'RECIPIENT NAME', accountNo });
+    }
+  });
+
+  const EXCHANGE_RATE = 4100; // 1 USD = 4100 KHR
+
+  app.post('/api/transfer', async (req, res) => {
+    const { senderId, receiverAccountNo, receiverName, amount, sourceCurrency, targetCurrency, pin } = req.body;
+    let amt = parseFloat(amount);
+    
+    if (isNaN(amt) || amt <= 0) return res.status(400).json({ success: false, error: 'Invalid amount' });
+    if (!pin) return res.status(400).json({ success: false, error: 'PIN is required' });
+
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      
+      // Verify user exists and is not locked
+      const { rows: statusRows } = await client.query('SELECT is_locked FROM users WHERE id = $1', [senderId]);
+      if (statusRows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+      if (statusRows[0].is_locked) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ success: false, error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.' });
+      }
+
+      // Verify PIN
+      const { rows: userRows } = await client.query('SELECT id FROM users WHERE id = $1 AND pin = $2', [senderId, pin]);
+      if (userRows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(401).json({ success: false, error: 'Invalid PIN' });
+      }
+
+      // Determine final amount to deduct based on currency
+      let deductAmt = amt;
+      let usedCurrency = targetCurrency || 'USD';
+
+      if (sourceCurrency && targetCurrency && sourceCurrency !== targetCurrency) {
+        if (sourceCurrency === 'USD' && targetCurrency === 'KHR') {
+          deductAmt = amt / EXCHANGE_RATE;
+        } else if (sourceCurrency === 'KHR' && targetCurrency === 'USD') {
+          deductAmt = amt * EXCHANGE_RATE;
+        }
+        usedCurrency = sourceCurrency;
+      }
+
+      // Find sender account with required currency
+      const { rows: accountRows } = await client.query(
+        'SELECT balance FROM accounts WHERE user_id = $1 AND currency = $2', 
+        [senderId, usedCurrency]
+      );
+      
+      let balanceBefore = 0;
+      if (accountRows.length) {
+        balanceBefore = parseFloat(accountRows[0].balance);
+        if (balanceBefore < deductAmt) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ success: false, error: 'Insufficient funds in select account' });
+        }
+        await client.query('UPDATE accounts SET balance = balance - $1 WHERE user_id = $2 AND currency = $3', [deductAmt, senderId, usedCurrency]);
+      } else {
+        // For demo
+        balanceBefore = usedCurrency === 'USD' ? 5000 : 20000000;
+      }
+
+      const txId = uuidv4();
+      const txQ = `
+        INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, party_name, party_account_no, currency)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `;
+      await client.query(txQ, [txId, senderId, deductAmt, 'minus', balanceBefore, balanceBefore - deductAmt, `Transfer to ${receiverAccountNo} (${amt} ${targetCurrency})`, receiverName || 'RECIPIENT', receiverAccountNo, usedCurrency]);
+      
+      const { rows: txRows } = await client.query('SELECT created_at FROM transactions WHERE id = $1', [txId]);
+      // SQLite CURRENT_TIMESTAMP is in "YYYY-MM-DD HH:MM:SS" format (UTC)
+      // Convert to ISO format by adding T and Z
+      const dbTime = txRows.length > 0 ? txRows[0].created_at : '';
+      const actualCreatedAt = dbTime ? dbTime.replace(' ', 'T') + 'Z' : new Date().toISOString();
+
+      await client.query('COMMIT');
+      
+      const tx = {
+        id: txId,
+        createdAt: actualCreatedAt,
+        amount: amt,
+        deductAmount: deductAmt,
+        sourceCurrency: usedCurrency,
+        targetCurrency: targetCurrency || 'USD',
+        type: 'send',
+        partyName: receiverName || 'RECIPIENT',
+        partyAccountNo: receiverAccountNo
+      };
+
+      emitBalanceUpdate(senderId, tx, balanceBefore - deductAmt);
+
+      res.json({ success: true, transaction: tx });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.error(err);
+      res.status(500).json({ success: false, error: 'Server error' });
+    } finally {
+      client.release();
+    }
+  });
+
+  app.post('/api/auth/pin', async (req, res) => {
+    const { pin } = req.body;
+    if (!pin) return res.status(400).json({ ok: false, error: 'PIN is required' });
+
+    try {
+      const { rows } = await db.query('SELECT id, name, email, role, is_locked FROM users WHERE pin = $1', [pin]);
+      if (rows.length) {
+        if (rows[0].is_locked) {
+          return res.status(403).json({ ok: false, error: 'Tài khoản đã bị khóa. Vui lòng liên hệ Admin.' });
+        }
+        // In a real app, use sessions or JWT. For this demo, we'll return user info.
+        res.json({ ok: true, user: rows[0] });
+      } else {
+        res.status(401).json({ ok: false, error: 'Invalid PIN' });
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+
+  app.post('/api/auth/biometric', async (req, res) => {
+    const { userName } = req.body;
+    if (!userName) return res.status(400).json({ ok: false, error: 'User name is required' });
+
+    try {
+      const { rows } = await db.query('SELECT id, name, email, role, is_locked FROM users WHERE name = $1', [userName]);
+      if (rows.length) {
+        if (rows[0].is_locked) {
+          return res.status(403).json({ ok: false, error: 'Tài khoản đã bị khóa. Vui lòng liên hệ Admin.' });
+        }
+        res.json({ ok: true, user: rows[0] });
+      } else {
+        res.status(401).json({ ok: false, error: 'Biometric failed' });
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  app.post('/api/auth/setup-pin', async (req, res) => {
+    const { userId, pin } = req.body;
+    if (!userId || !pin) return res.status(400).json({ ok: false, error: 'User ID and PIN are required' });
+
+    try {
+      await db.query('UPDATE users SET pin = $1 WHERE id = $2', [pin, userId]);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  // Basic Admin protection middleware
+  // Note: For a real app, use JWT or industrial Sessions
+  const isAdmin = async (req, res, next) => {
+    const adminId = req.headers['x-admin-id'];
+    if (!adminId) return res.status(403).json({ ok: false, error: 'Unauthorized: Admin access required' });
+    
+    try {
+      const { rows } = await db.query('SELECT role FROM users WHERE id = $1', [adminId]);
+      if (rows.length && rows[0].role === 'admin') {
+        next();
+      } else {
+        res.status(403).json({ ok: false, error: 'Forbidden: Admins only' });
+      }
+    } catch (err) {
+      res.status(500).json({ ok: false, error: 'Auth check failed' });
+    }
+  };
+
+  app.get('/api/admin/master-log', isAdmin, async (req, res) => {
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
+    const accountFilter = req.query.account;
+
+    try {
+      let q = `
+        SELECT t.id, t.created_at, t.amount, t.type, t.balance_before, t.balance_after, t.note, t.currency, u.name as user_name, u.email as user_email
+        FROM transactions t
+        JOIN users u ON t.user_id = u.id
+      `;
+      const params = [];
+      if (accountFilter) {
+        q += ` WHERE u.id = $1 OR u.email = $1 `;
+        params.push(accountFilter);
+      }
+      q += ` ORDER BY t.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2} `;
+      params.push(limit, offset);
+
+      const { rows } = await db.query(q, params);
+      res.json({ ok: true, transactions: rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  app.get('/api/admin/users', isAdmin, async (req, res) => {
+    try {
+      const q = `
+        SELECT u.id, u.name, u.email, u.role, u.pin, u.is_locked, u.is_topup_locked, a.balance, a.currency, a.account_no
+        FROM users u
+        JOIN accounts a ON a.user_id = u.id
+        ORDER BY u.created_at DESC
+      `;
+      const { rows } = await db.query(q);
+      
+      // Group accounts by user
+      const usersMap = {};
+      rows.forEach(r => {
+        if (!usersMap[r.id]) {
+          usersMap[r.id] = { 
+            id: r.id, 
+            name: r.name, 
+            email: r.email, 
+            role: r.role, 
+            pin: r.pin, 
+            is_locked: r.is_locked === 1,
+            is_topup_locked: r.is_topup_locked === 1,
+            balances: {},
+            accountNumbers: {}
+          };
+        }
+        usersMap[r.id].balances[r.currency] = r.balance;
+        usersMap[r.id].accountNumbers[r.currency] = r.account_no;
+      });
+      
+      res.json({ ok: true, users: Object.values(usersMap) });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  app.patch('/api/admin/users/:id', isAdmin, async (req, res) => {
+    const userId = req.params.id;
+    const { name, email, pin, role } = req.body;
+    
+    try {
+      const sets = [];
+      const params = [];
+      if (name) { sets.push(`name = $${params.length + 1}`); params.push(name); }
+      if (email) { sets.push(`email = $${params.length + 1}`); params.push(email); }
+      if (pin) { sets.push(`pin = $${params.length + 1}`); params.push(pin); }
+      if (role) { sets.push(`role = $${params.length + 1}`); params.push(role); }
+      
+      if (sets.length === 0) return res.status(400).json({ ok: false, error: 'No fields to update' });
+      
+      params.push(userId);
+      const q = `UPDATE users SET ${sets.join(', ')} WHERE id = $${params.length}`;
+      await db.query(q, params);
+      
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.delete('/api/admin/users/:id', isAdmin, async (req, res) => {
+    const userId = req.params.id;
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM transactions WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM accounts WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM users WHERE id = $1', [userId]);
+      await client.query('COMMIT');
+      res.json({ ok: true });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      client.release();
+    }
+  });
+
+  app.get('/api/user/:id', async (req, res) => {
+    const userId = req.params.id;
+    try {
+      const userQ = `SELECT u.id, u.name, a.balance FROM users u JOIN accounts a ON a.user_id = u.id WHERE u.id = $1`;
+      const { rows: userRows } = await db.query(userQ, [userId]);
+      if (!userRows.length) return res.status(404).json({ ok: false, error: 'User not found' });
+
+      const txQ = `SELECT id, amount, type, balance_before, balance_after, created_at, note, currency, admin_id FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`;
+      const { rows: txRows } = await db.query(txQ, [userId]);
+
+      res.json({ ok: true, user: userRows[0], transactions: txRows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  app.post('/api/admin/users', isAdmin, async (req, res) => {
+    const { name, email } = req.body;
+    if (!name || !email) return res.status(400).json({ ok: false, error: 'Name and email are required' });
+
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      
+      const userId = uuidv4();
+      const userQ = 'INSERT INTO users (id, name, email) VALUES ($1, $2, $3)';
+      await client.query(userQ, [userId, name, email]);
+      
+      const accQ = 'INSERT INTO accounts (user_id, balance) VALUES ($1, 0)';
+      await client.query(accQ, [userId]);
+      
+      await client.query('COMMIT');
+      res.json({ ok: true, userId });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.error(err);
+      res.status(500).json({ ok: false, error: err.message || 'Server error' });
+    } finally {
+      client.release();
+    }
+  });
+
+  app.post('/api/admin/reset-db', isAdmin, async (req, res) => {
+    try {
+      const fs = require('fs');
+      const schema = fs.readFileSync(path.resolve(__dirname, 'schema.sql'), 'utf8');
+      
+      // Close and reopen for nuking
+      // In better-sqlite3 we can just exec
+      db.exec('PRAGMA foreign_keys = OFF');
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+      tables.forEach(t => db.prepare(`DROP TABLE IF EXISTS ${t.name}`).run());
+      db.exec(schema);
+      
+      // Reseed via the logic in db.js (calling the exported init function if it existed, but it's executed on load)
+      // Since db.js executes on load, I'll just restart the process or re-run seed here logic-wise
+      // But for this environment, let's just send a success and tell user to refresh
+      res.json({ ok: true, message: 'Database reset to schema' });
+      
+      // Auto-exit so the container restarts and db.js seeds again
+      setTimeout(() => process.exit(0), 100);
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/create-user', isAdmin, async (req, res) => {
+    const { name, email, pin, usdAccountNo, khrAccountNo } = req.body;
+    if (!name || !pin) return res.status(400).json({ ok: false, error: 'Name and PIN are required' });
+
+    const userId = uuidv4();
+    try {
+      // Use db.query which is the exported adapter
+      await db.query('INSERT INTO users (id, name, email, pin, role) VALUES ($1, $2, $3, $4, $5)', 
+        [userId, name, email || `${userId}@bank.com`, pin, 'user']);
+      
+      // Create USD account with custom account number
+      const usdNo = usdAccountNo || Math.floor(100000000 + Math.random() * 900000000).toString();
+      await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)',
+        [userId, 'USD', 0, usdNo]);
+        
+      // Create KHR account with custom account number
+      const khrNo = khrAccountNo || Math.floor(100000000 + Math.random() * 900000000).toString();
+      await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)',
+        [userId, 'KHR', 0, khrNo]);
+        
+      res.json({ ok: true, userId });
+    } catch (err) {
+      console.error('Create user error:', err);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/users/:id/toggle-lock', isAdmin, async (req, res) => {
+    const userId = req.params.id;
+    try {
+      const { rows } = await db.query('SELECT is_locked FROM users WHERE id = $1', [userId]);
+      if (!rows.length) return res.status(404).json({ ok: false, error: 'User not found' });
+      
+      const newStatus = rows[0].is_locked === 1 ? 0 : 1;
+      await db.query('UPDATE users SET is_locked = $1 WHERE id = $2', [newStatus, userId]);
+      
+      res.json({ ok: true, is_locked: newStatus === 1 });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/users/:id/toggle-topup-lock', isAdmin, async (req, res) => {
+    const userId = req.params.id;
+    try {
+      const { rows } = await db.query('SELECT is_topup_locked FROM users WHERE id = $1', [userId]);
+      if (!rows.length) return res.status(404).json({ ok: false, error: 'User not found' });
+      
+      const newStatus = rows[0].is_topup_locked === 1 ? 0 : 1;
+      await db.query('UPDATE users SET is_topup_locked = $1 WHERE id = $2', [newStatus, userId]);
+      
+      res.json({ ok: true, is_topup_locked: newStatus === 1 });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+  app.post('/api/admin/adjust', isAdmin, async (req, res) => {
+    const { userId, amount, type, adminId, note, currency = 'USD' } = req.body;
+
+    if (!userId || !amount || !type) return res.status(400).json({ ok: false, error: 'Missing fields' });
+    if (!['plus', 'minus'].includes(type)) return res.status(400).json({ ok: false, error: 'Invalid type' });
+    const amt = parseFloat(amount);
+    if (isNaN(amt) || amt <= 0) return res.status(400).json({ ok: false, error: 'Invalid amount' });
+
+    try {
+      const { rows: userCheck } = await db.query('SELECT is_topup_locked FROM users WHERE id = $1', [userId]);
+      if (userCheck.length && userCheck[0].is_topup_locked === 1 && type === 'plus') {
+        return res.status(403).json({ ok: false, error: 'User has top-up privilege locked by Admin.' });
+      }
+
+      const { rows } = await db.query('SELECT balance FROM accounts WHERE user_id = $1 AND currency = $2', [userId, currency]);
+      if (!rows.length) {
+        return res.status(404).json({ ok: false, error: 'Account not found for currency' });
+      }
+      
+      const balanceBefore = parseFloat(rows[0].balance);
+      const delta = type === 'plus' ? amt : -amt;
+      const balanceAfter = Number((balanceBefore + delta).toFixed(2));
+
+      if (balanceAfter < 0) {
+        return res.status(400).json({ ok: false, error: 'Insufficient funds' });
+      }
+
+      // Update balance
+      await db.query('UPDATE accounts SET balance = $1, updated_at = now() WHERE user_id = $2 AND currency = $3', [balanceAfter, userId, currency]);
+
+      // Record transaction
+      const txId = uuidv4();
+      // Map to standard UI types: Receive for Plus, Adjustment for Minus (as requested)
+      const txType = type === 'plus' ? 'receive' : 'send'; 
+      const finalNote = note || `Admin Adjustment (${type === 'plus' ? '+' : '-'})`;
+      const partyName = type === 'plus' ? 'ADMIN TOP UP' : 'ADMIN ADJUSTMENT';
+      
+      await db.query(`
+        INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, admin_id, note, currency, party_name)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `, [txId, userId, amt, txType, balanceBefore, balanceAfter, adminId || null, finalNote, currency, partyName]);
+
+      const transactionPayload = {
+        id: txId,
+        user_id: userId,
+        amount: amt,
+        type: txType,
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        admin_id: adminId || null,
+        note: finalNote,
+        currency,
+        created_at: new Date()
+      };
+
+      emitBalanceUpdate(userId, transactionPayload, balanceAfter).catch(err => console.error('emit error', err));
+
+      res.json({ ok: true, transaction: transactionPayload });
+
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/user/:id/transactions', async (req, res) => {
+    const userId = req.params.id;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    try {
+      const q = `SELECT id, amount, type, balance_before, balance_after, created_at, note, currency, admin_id, party_name, party_account_no FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
+      const { rows } = await db.query(q, [userId, limit, offset]);
+      
+      // Transform for frontend if needed
+      const transformed = rows.map(r => {
+         let currency = r.currency || 'USD';
+         // Fallback legacy check
+         if (!r.currency && r.note && typeof r.note === 'string' && r.note.includes('KHR')) {
+            currency = 'KHR';
+         }
+         return {
+           id: r.id,
+           amount: Math.abs(parseFloat(r.amount)),
+           type: r.amount < 0 || r.type === 'minus' ? 'send' : 'receive',
+           currency: currency,
+           partyName: r.party_name || (r.type === 'minus' ? 'RECIPIENT' : 'ABA SYSTEM'),
+           partyAccountNo: r.party_account_no || '000 000 000',
+           createdAt: r.created_at ? r.created_at.replace(' ', 'T') + 'Z' : new Date().toISOString(),
+           note: r.note,
+           balanceAfter: parseFloat(r.balance_after)
+         };
+      });
+
+      res.json({ ok: true, transactions: transformed });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  let vite;
+  if (process.env.NODE_ENV !== 'production') {
+    vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  }
+
+  app.get('*', async (req, res, next) => {
+    const url = req.originalUrl;
+    if (process.env.NODE_ENV === 'production') {
+      res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+    } else {
+      try {
+        const fs = require('fs');
+        let template = fs.readFileSync(path.resolve(process.cwd(), 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        next(e);
+      }
+    }
+  });
+
+  const PORT = 3000;
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log('Server listening on', PORT);
+  });
+}
+
+startServer();

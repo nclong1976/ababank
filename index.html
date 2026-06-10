@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>ABA Mobile Remix</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#005c7a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ABA Mobile" />
+    <link rel="icon" type="image/png" href="https://media.licdn.com/dms/image/v2/C510BAQEnYW7qoK68EQ/company-logo_200_200/company-logo_200_200/0/1630579892170/aba_bank_logo?e=2147483647&v=beta&t=CNGsdiQOwm9PB1VAqw8aqn7Iau72Zen8WZmsqrdC1sY" />
+    <link rel="apple-touch-icon" href="https://media.licdn.com/dms/image/v2/C510BAQEnYW7qoK68EQ/company-logo_200_200/company-logo_200_200/0/1630579892170/aba_bank_logo?e=2147483647&v=beta&t=CNGsdiQOwm9PB1VAqw8aqn7Iau72Zen8WZmsqrdC1sY" />
+    <script>
+      (function() {
+        console.log('--- ULTIMATE FETCH FIX ---');
+        try {
+          const originalFetch = window.fetch;
+          
+          function applyFix(target) {
+            try {
+              const desc = Object.getOwnPropertyDescriptor(target, 'fetch');
+              if (desc && !desc.configurable) return false;
+              
+              let currentFetch = originalFetch;
+              Object.defineProperty(target, 'fetch', {
+                get: function() { return currentFetch; },
+                set: function(v) { 
+                  console.log('Fetch overwritten safely');
+                  currentFetch = v; 
+                },
+                configurable: true,
+                enumerable: true
+              });
+              return true;
+            } catch (e) {
+              return false;
+            }
+          }
+
+          // Try to define it directly on window first. 
+          // If fetch is a getter on the prototype, defining it on window (the instance) 
+          // will shadow the prototype getter and allow assignments.
+          if (!applyFix(window)) {
+            // Fallback to prototype if window definition failed for some reason
+            const proto = Object.getPrototypeOf(window);
+            if (proto) applyFix(proto);
+          }
+          
+          console.log('Ultimate fetch fix applied');
+        } catch (e) {
+          console.error('Ultimate fetch fix failed:', e);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
