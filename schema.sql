@@ -2,7 +2,8 @@
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    phone VARCHAR(20) UNIQUE,
     pin TEXT NOT NULL,
     role TEXT DEFAULT 'user',
     is_locked INTEGER DEFAULT 0,

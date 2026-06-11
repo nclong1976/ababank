@@ -34,12 +34,16 @@ if (db) {
         const userColumns = db.prepare('PRAGMA table_info(users)').all();
         const hasPin = userColumns.some(c => c.name === 'pin');
         const hasRole = userColumns.some(c => c.name === 'role');
+        const hasPhone = userColumns.some(c => c.name === 'phone');
         
         if (!hasPin) {
           db.prepare("ALTER TABLE users ADD COLUMN pin TEXT DEFAULT '111111'").run();
         }
         if (!hasRole) {
           db.prepare("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'").run();
+        }
+        if (!hasPhone) {
+          db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run();
         }
 
         // Migration logic for adjustments

@@ -1,6 +1,6 @@
-import React from 'react';
-import { ChevronLeft, QrCode } from 'lucide-react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, QrCode, Fingerprint } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface TransfersProps {
   onBack: () => void;
@@ -10,6 +10,53 @@ interface TransfersProps {
 }
 
 export default function Transfers({ onBack, onScanQR, onShowReceipt, currentUserId }: TransfersProps) {
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem('biometric_enabled') === 'true') {
+       setIsBiometricEnabled(true);
+    }
+  }, []);
+
+  const handleSend = () => {
+    if (isBiometricEnabled) {
+       setShowBiometricPrompt(true);
+    } else {
+       if (onShowReceipt) onShowReceipt();
+    }
+  };
+
+  const handleBiometricAuth = async () => {
+    setShowBiometricPrompt(false);
+    
+    try {
+      if ((window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'BIOMETRIC_AUTH_REQUEST' }));
+        await new Promise(r => setTimeout(r, 1000));
+      } else if (window.PublicKeyCredential) {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        
+        await navigator.credentials.get({
+          publicKey: {
+            challenge: challenge,
+            rpId: window.location.hostname,
+            userVerification: "preferred",
+            timeout: 60000
+          }
+        });
+      } else {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      
+      if (onShowReceipt) onShowReceipt();
+    } catch (err) {
+      console.error('Biometric error:', err);
+      alert('Biometric verification failed');
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, x: '100%' }}
@@ -17,6 +64,47 @@ export default function Transfers({ onBack, onScanQR, onShowReceipt, currentUser
       exit={{ opacity: 0, x: '100%' }}
       className="fixed inset-0 z-50 bg-[#005977] flex flex-col font-sans"
     >
+      <AnimatePresence>
+        {showBiometricPrompt && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-[#003855]/90 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white text-black p-8 rounded-[2rem] flex flex-col items-center shadow-2xl max-w-[85vw] w-full max-w-sm"
+            >
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-6">
+                <Fingerprint className="w-8 h-8 text-[#00bcd4]" />
+              </div>
+              <h2 className="text-xl font-bold mb-2 tracking-tight text-[#003855]">Biometric Transfer</h2>
+              <p className="text-gray-500 font-medium text-sm text-center max-w-[200px] mb-8">
+                Confirm your face or fingerprint to authorize payment
+              </p>
+              
+              <div className="flex gap-3 w-full">
+                <button 
+                  onClick={() => setShowBiometricPrompt(false)}
+                  className="flex-1 py-3.5 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm active:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleBiometricAuth}
+                  className="flex-1 py-3.5 bg-[#00bcd4] rounded-xl font-bold text-white text-sm active:bg-[#009aba] transition-colors"
+                >
+                  Scan
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="flex items-center p-4 pt-10 text-white relative">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:scale-95 transition-colors z-10">
           <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
@@ -87,7 +175,7 @@ export default function Transfers({ onBack, onScanQR, onShowReceipt, currentUser
 
           <div className="p-5 pb-[40px]">
              <motion.button 
-                onClick={onShowReceipt}
+                onClick={handleSend}
                 whileTap={{ scale: 0.98 }}
                 className="w-full bg-[#f1404b] text-white py-[16px] rounded-[8px] text-[18px] font-bold shadow-md active:scale-[0.98] transition-transform tracking-wide font-sans"
              >

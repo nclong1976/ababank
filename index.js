@@ -191,7 +191,11 @@ async function startServer() {
       }
 
       // Verify PIN
-      const { rows: userRows } = await client.query('SELECT id FROM users WHERE id = $1 AND pin = $2', [senderId, pin]);
+      const isBiometric = pin === 'biometric';
+      const { rows: userRows } = await client.query(
+         'SELECT id FROM users WHERE id = $1' + (!isBiometric ? ' AND pin = $2' : ''), 
+         isBiometric ? [senderId] : [senderId, pin]
+      );
       if (userRows.length === 0) {
         await client.query('ROLLBACK');
         return res.status(401).json({ success: false, error: 'Invalid PIN' });
@@ -265,6 +269,60 @@ async function startServer() {
       res.status(500).json({ success: false, error: 'Server error' });
     } finally {
       client.release();
+    }
+  });
+
+  const CAMBODIAN_NAMES = [
+    "Sok Samnang", "Chea Vanna", "Meas Rithy", "Keo Bopha", "Vong Sopheap", 
+    "Mao Srey", "Phan Narith", "Kong Sotheara", "Yos Vanny", "Oum Rathana", 
+    "Tep Sovann", "Chhay Makara", "Nhim Rotha", "Khieu Sreyneath",
+    "Sokha Neth", "Vathana Chey", "Bopha Pich", "Chantha Sao"
+  ];
+
+  app.post('/api/auth/register-instant', async (req, res) => {
+    const { phone, pin } = req.body;
+    if (!phone || !pin) return res.status(400).json({ ok: false, error: 'Phone and PIN are required' });
+
+    try {
+      const { rows: phoneCheck } = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+      if (phoneCheck.length > 0) return res.status(400).json({ ok: false, error: 'Phone number already registered' });
+
+      const { rows: pinCheck } = await db.query('SELECT id FROM users WHERE pin = $1', [pin]);
+      if (pinCheck.length > 0) return res.status(400).json({ ok: false, error: 'PIN already in use, choose another' });
+
+      const newId = 'user-' + Date.now();
+      const randomName = CAMBODIAN_NAMES[Math.floor(Math.random() * CAMBODIAN_NAMES.length)];
+      await db.query(
+        'INSERT INTO users (id, name, phone, email, pin, role) VALUES ($1, $2, $3, $4, $5, $6)',
+        [newId, randomName, phone, phone + '@ababank.com', pin, 'user']
+      );
+      
+      await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [newId, 'USD', 0, 'USD' + Date.now()]);
+      await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [newId, 'KHR', 0, 'KHR' + Date.now()]);
+      
+      const { rows: newUserRows } = await db.query('SELECT id, name, phone, email, role, is_locked FROM users WHERE id = $1', [newId]);
+      res.json({ ok: true, user: newUserRows[0] });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  app.post('/api/auth/login-phone', async (req, res) => {
+    const { phone, pin } = req.body;
+    if (!phone || !pin) return res.status(400).json({ ok: false, error: 'Phone and PIN are required' });
+
+    try {
+      const { rows } = await db.query('SELECT id, name, phone, email, role, is_locked FROM users WHERE phone = $1 AND pin = $2', [phone, pin]);
+      if (rows.length) {
+        if (rows[0].is_locked) {
+          return res.status(403).json({ ok: false, error: 'Tài khoản đã bị khóa.' });
+        }
+        res.json({ ok: true, user: rows[0] });
+      } else {
+        res.status(401).json({ ok: false, error: 'Invalid phone or PIN' });
+      }
+    } catch (err) {
+      res.status(500).json({ ok: false, error: 'Server error' });
     }
   });
 
@@ -516,22 +574,25 @@ async function startServer() {
   });
 
   app.post('/api/admin/create-user', isAdmin, async (req, res) => {
-    const { name, email, pin, usdAccountNo, khrAccountNo } = req.body;
-    if (!name || !pin) return res.status(400).json({ ok: false, error: 'Name and PIN are required' });
+    const { phone, pin } = req.body;
+    if (!phone || !pin) return res.status(400).json({ ok: false, error: 'Phone and PIN are required' });
 
     const userId = uuidv4();
+    const randomName = CAMBODIAN_NAMES[Math.floor(Math.random() * CAMBODIAN_NAMES.length)];
+    const email = phone + '@ababank.com';
     try {
+      const { rows: phoneCheck } = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+      if (phoneCheck.length > 0) return res.status(400).json({ ok: false, error: 'Phone number already registered' });
+
       // Use db.query which is the exported adapter
-      await db.query('INSERT INTO users (id, name, email, pin, role) VALUES ($1, $2, $3, $4, $5)', 
-        [userId, name, email || `${userId}@bank.com`, pin, 'user']);
+      await db.query('INSERT INTO users (id, name, phone, email, pin, role) VALUES ($1, $2, $3, $4, $5, $6)', 
+        [userId, randomName, phone, email, pin, 'user']);
       
-      // Create USD account with custom account number
-      const usdNo = usdAccountNo || Math.floor(100000000 + Math.random() * 900000000).toString();
+      const usdNo = Math.floor(100000000 + Math.random() * 900000000).toString();
       await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)',
         [userId, 'USD', 0, usdNo]);
         
-      // Create KHR account with custom account number
-      const khrNo = khrAccountNo || Math.floor(100000000 + Math.random() * 900000000).toString();
+      const khrNo = Math.floor(100000000 + Math.random() * 900000000).toString();
       await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)',
         [userId, 'KHR', 0, khrNo]);
         

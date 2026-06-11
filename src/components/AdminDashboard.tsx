@@ -40,7 +40,8 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
   const [searchQuery, setSearchQuery] = useState('');
   
   // Adjustment Form
-  const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
+  const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
+  const [adjustType, setAdjustType] = useState<'plus' | 'minus'>('plus');
   const [targetUser, setTargetUser] = useState<any>(null);
   const [amount, setAmount] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'KHR'>('USD');
@@ -81,11 +82,8 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
   const [editFormData, setEditFormData] = useState({ name: '', email: '', pin: '', role: 'user' });
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [createFormData, setCreateFormData] = useState({ 
-    name: '', 
-    email: '', 
-    pin: '', 
-    usdAccountNo: '', 
-    khrAccountNo: '' 
+    phone: '', 
+    pin: ''
   });
 
   const toggleUserLock = async (userId: string) => {
@@ -153,8 +151,8 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
   };
 
   const handleCreateUser = async () => {
-    if (!createFormData.name || !createFormData.pin) {
-      alert('Tên và mã PIN là bắt buộc');
+    if (!createFormData.phone || !createFormData.pin) {
+      alert('Số điện thoại và mã PIN là bắt buộc');
       return;
     }
     try {
@@ -169,13 +167,13 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
       if (res.ok) {
         setShowCreateUserModal(false);
         setCreateFormData({ 
-          name: '', 
-          email: '', 
-          pin: '', 
-          usdAccountNo: '', 
-          khrAccountNo: '' 
+          phone: '', 
+          pin: ''
         });
         fetchUsers();
+      } else {
+        const errorData = await res.json();
+        alert('Lỗi: ' + errorData.error);
       }
     } catch (err) {
       console.error(err);
@@ -226,7 +224,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
         body: JSON.stringify({
           userId: targetUser.id,
           amount,
-          type: 'plus',
+          type: adjustType,
           adminId,
           note: reason,
           currency: selectedCurrency
@@ -235,7 +233,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
 
       const data = await res.json();
       if (data.ok) {
-        setIsTopUpModalOpen(false);
+        setIsAdjustModalOpen(false);
         setAmount('');
         fetchUsers();
       } else {
@@ -412,12 +410,26 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                     disabled={u.is_topup_locked}
                     onClick={() => {
                       setTargetUser(u);
-                      setIsTopUpModalOpen(true);
+                      setAdjustType('plus');
+                      setReason('Admin cộng tiền');
+                      setIsAdjustModalOpen(true);
                       setAmount('');
                     }}
                     className={`flex-1 py-2.5 rounded-xl font-bold text-[10px] tracking-widest uppercase transition-all ${u.is_topup_locked ? 'bg-gray-800 text-gray-600 border border-white/5 cursor-not-allowed' : 'bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-black shadow-lg shadow-[#D4AF37]/20 active:scale-95'}`}
                    >
-                     {u.is_topup_locked ? 'Top-up Locked' : 'Nạp Tiền'}
+                     {u.is_topup_locked ? 'Khoá Nạp' : 'Nạp Tiền (Cộng)'}
+                   </button>
+                   <button 
+                    onClick={() => {
+                      setTargetUser(u);
+                      setAdjustType('minus');
+                      setReason('Admin trừ tiền');
+                      setIsAdjustModalOpen(true);
+                      setAmount('');
+                    }}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-red-600 to-red-800 text-white rounded-xl font-bold text-[10px] tracking-widest uppercase active:scale-95 transition-all shadow-lg shadow-red-500/20"
+                   >
+                     Trừ Tiền
                    </button>
                    <button 
                     onClick={() => handleEditUser(u)}
@@ -479,46 +491,46 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
       </main>
 
       <AnimatePresence>
-        {/* TOP UP MODAL */}
-        {isTopUpModalOpen && targetUser && (
+        {/* ADJUSTMENT MODAL */}
+        {isAdjustModalOpen && targetUser && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
              <motion.div 
                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                className="absolute inset-0 bg-black/90 backdrop-blur-md"
-               onClick={() => setIsTopUpModalOpen(false)}
+               onClick={() => setIsAdjustModalOpen(false)}
              />
              <motion.div 
                initial={{ scale: 0.9, opacity: 0, y: 30 }}
                animate={{ scale: 1, opacity: 1, y: 0 }}
                exit={{ scale: 0.9, opacity: 0, y: 30 }}
-               className="relative w-full max-w-sm bg-[#121212] rounded-[2.5rem] p-8 shadow-[0_0_50px_rgba(212,175,55,0.15)] border border-gray-800 overflow-hidden"
+               className={`relative w-full max-w-sm bg-[#121212] rounded-[2.5rem] p-8 shadow-[0_0_50px_rgba(212,175,55,0.15)] border overflow-hidden ${adjustType === 'minus' ? 'shadow-[0_0_50px_rgba(220,38,38,0.15)] border-red-900' : 'border-gray-800'}`}
              >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37] blur-[100px] opacity-10 -mr-16 -mt-16" />
+                <div className={`absolute top-0 right-0 w-32 h-32 blur-[100px] opacity-10 -mr-16 -mt-16 ${adjustType === 'minus' ? 'bg-red-500' : 'bg-[#D4AF37]'}`} />
                 
                 <header className="text-center mb-8">
-                   <div className="w-16 h-16 bg-[#D4AF37]/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#D4AF37]/20 shadow-inner">
-                      <Plus className="w-8 h-8 text-[#D4AF37]" strokeWidth={2.5} />
+                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border shadow-inner ${adjustType === 'minus' ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-[#D4AF37]/10 border-[#D4AF37]/20 text-[#D4AF37]'}`}>
+                      {adjustType === 'minus' ? <Minus className="w-8 h-8" strokeWidth={2.5} /> : <Plus className="w-8 h-8" strokeWidth={2.5} />}
                    </div>
-                   <h3 className="text-xl font-black text-white font-sans tracking-tight mb-1">NẠP TIỀN HỆ THỐNG</h3>
-                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Cộng số dư cho {targetUser.name}</p>
+                   <h3 className="text-xl font-black text-white font-sans tracking-tight mb-1">ĐIỀU CHỈNH SỐ DƯ</h3>
+                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">{adjustType === 'minus' ? 'Trừ tiền của' : 'Cộng số dư cho'} {targetUser.name}</p>
                 </header>
 
                 <div className="space-y-6">
                    <div className="flex p-1 bg-white/5 rounded-2xl border border-white/5">
                       <button 
                         onClick={() => setSelectedCurrency('USD')}
-                        className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all ${selectedCurrency === 'USD' ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20' : 'text-gray-500'}`}
+                        className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all ${selectedCurrency === 'USD' ? (adjustType === 'minus' ? 'bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20') : 'text-gray-500'}`}
                       >USD</button>
                       <button 
                         onClick={() => setSelectedCurrency('KHR')}
-                        className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all ${selectedCurrency === 'KHR' ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20' : 'text-gray-500'}`}
+                        className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all ${selectedCurrency === 'KHR' ? (adjustType === 'minus' ? 'bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20') : 'text-gray-500'}`}
                       >KHR</button>
                    </div>
 
                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Số tiền cộng</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">{adjustType === 'minus' ? 'Số tiền cần trừ' : 'Số tiền cộng'}</label>
                       <div className="relative">
-                         <div className="absolute left-5 top-1/2 -translate-y-1/2 text-[#D4AF37] font-black text-xl">
+                         <div className={`absolute left-5 top-1/2 -translate-y-1/2 font-black text-xl ${adjustType === 'minus' ? 'text-red-500' : 'text-[#D4AF37]'}`}>
                             {selectedCurrency === 'USD' ? '$' : '៛'}
                          </div>
                          <input 
@@ -527,7 +539,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                            placeholder="0.00"
                            value={amount}
                            onChange={e => setAmount(e.target.value)}
-                           className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-12 pr-6 text-2xl font-black text-white outline-none focus:border-[#D4AF37] transition-all shadow-inner"
+                           className={`w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-12 pr-6 text-2xl font-black text-white outline-none transition-all shadow-inner ${adjustType === 'minus' ? 'focus:border-red-500' : 'focus:border-[#D4AF37]'}`}
                          />
                       </div>
                    </div>
@@ -537,21 +549,21 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                       <input 
                         value={reason}
                         onChange={e => setReason(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold text-gray-300 outline-none focus:border-[#D4AF37] transition-all"
+                        className={`w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold text-gray-300 outline-none transition-all ${adjustType === 'minus' ? 'focus:border-red-500' : 'focus:border-[#D4AF37]'}`}
                       />
                    </div>
 
                    <div className="flex gap-4 pt-4">
                       <button 
-                        onClick={() => setIsTopUpModalOpen(false)}
+                        onClick={() => setIsAdjustModalOpen(false)}
                         className="flex-1 py-4 text-xs font-bold tracking-widest uppercase text-gray-500 hover:text-white transition-colors"
                       >HỦY BỎ</button>
                       <button 
                         disabled={isProcessing || !amount}
                         onClick={() => handleAdjustment()}
-                        className="flex-[2] py-4 bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-black rounded-2xl font-black text-xs tracking-widest uppercase shadow-xl shadow-[#D4AF37]/30 active:scale-95 disabled:opacity-50 transition-all"
+                        className={`flex-[2] py-4 rounded-2xl font-black text-xs tracking-widest uppercase active:scale-95 disabled:opacity-50 transition-all ${adjustType === 'minus' ? 'bg-gradient-to-r from-red-600 to-red-800 text-white shadow-xl shadow-red-500/30' : 'bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-black shadow-xl shadow-[#D4AF37]/30'}`}
                       >
-                        {isProcessing ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN CỘNG'}
+                        {isProcessing ? 'ĐANG XỬ LÝ...' : (adjustType === 'minus' ? 'XÁC NHẬN TRỪ' : 'XÁC NHẬN CỘNG')}
                       </button>
                    </div>
                 </div>
@@ -583,43 +595,14 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
 
               <div className="space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Họ và Tên</label>
+                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Số điện thoại</label>
                   <input 
-                    placeholder="ví dụ: ALEX NGUYEN"
-                    value={createFormData.name}
-                    onChange={e => setCreateFormData({...createFormData, name: e.target.value})}
+                    type="tel"
+                    placeholder="ví dụ: 0987654321"
+                    value={createFormData.phone}
+                    onChange={e => setCreateFormData({...createFormData, phone: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 outline-none focus:border-[#D4AF37] transition-all text-white font-bold"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Email</label>
-                  <input 
-                    type="email"
-                    placeholder="alex@example.com"
-                    value={createFormData.email}
-                    onChange={e => setCreateFormData({...createFormData, email: e.target.value})}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 outline-none focus:border-[#D4AF37] transition-all text-white font-bold"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Tài Khoản USD (9 số)</label>
-                  <input 
-                    maxLength={9}
-                    placeholder="123 456 789"
-                    value={createFormData.usdAccountNo}
-                    onChange={e => setCreateFormData({...createFormData, usdAccountNo: e.target.value.replace(/\D/g, '')})}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 outline-none focus:border-[#D4AF37] transition-all text-white font-mono font-bold tracking-widest"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                   <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Tài Khoản KHR (9 số)</label>
-                   <input 
-                     maxLength={9}
-                     placeholder="987 654 321"
-                     value={createFormData.khrAccountNo}
-                     onChange={e => setCreateFormData({...createFormData, khrAccountNo: e.target.value.replace(/\D/g, '')})}
-                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 outline-none focus:border-[#D4AF37] transition-all text-white font-mono font-bold tracking-widest"
-                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Mã PIN Đăng Nhập (4 số)</label>

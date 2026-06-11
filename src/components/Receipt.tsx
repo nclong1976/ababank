@@ -4,6 +4,16 @@ import { Check } from 'lucide-react';
 
 interface ReceiptProps {
   onBack: () => void;
+  amount?: any;
+  currency?: any;
+  recipientName?: any;
+  recipientAccount?: any;
+  senderName?: any;
+  senderAccount?: any;
+  transactionId?: any;
+  transactionDate?: any;
+  remainingBalance?: any;
+  type?: any;
   transactionDetails?: {
     amount: string;
     date: string;
@@ -17,20 +27,31 @@ interface ReceiptProps {
   };
 }
 
-export default function Receipt({ onBack, transactionDetails }: ReceiptProps) {
-  const defaultDetails = {
-    amount: '246.00',
-    date: 'May 11, 2022 | 8:42AM',
-    id: '22422068',
-    senderName: 'JOHN DOE',
-    senderAccount: 'Payroll Account (001 726 280)',
-    receiverName: 'RITHY PHUONG',
-    receiverAccount: '009 876 543',
+export default function Receipt({ 
+  onBack, 
+  transactionDetails,
+  amount,
+  currency,
+  recipientName,
+  recipientAccount,
+  senderName,
+  senderAccount,
+  transactionId,
+  transactionDate,
+  remainingBalance,
+  type
+}: ReceiptProps) {
+  const details = transactionDetails || {
+    amount: amount ? `${amount} ${currency || 'USD'}` : '246.00',
+    date: transactionDate ? (typeof transactionDate === 'string' ? transactionDate : new Date(transactionDate).toLocaleDateString('en-US') + ' | ' + new Date(transactionDate).toLocaleTimeString('en-US')) : 'May 11, 2022 | 8:42AM',
+    id: transactionId ? transactionId.toString() : '22422068',
+    senderName: senderName || 'JOHN DOE',
+    senderAccount: senderAccount || 'Payroll Account (001 726 280)',
+    receiverName: recipientName || 'RITHY PHUONG',
+    receiverAccount: recipientAccount || '009 876 543',
     bankName: 'ABA Bank',
     fee: '0.00'
   };
-
-  const details = transactionDetails || defaultDetails;
 
   return (
     <motion.div 

@@ -5,7 +5,8 @@ import {
   Gift, 
   X,
   ArrowRight,
-  Info
+  Info,
+  Fingerprint
 } from 'lucide-react';
 import Receipt from './Receipt';
 import { parseKHQR } from '../lib/khqr';
@@ -34,10 +35,17 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
   const [sourceCurrency, setSourceCurrency] = useState<'USD' | 'KHR'>('USD');
   const [qrValid, setQrValid] = useState(true);
   const [txData, setTxData] = useState<any>(null);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
 
   const EXCHANGE_RATE = 4100;
 
   useEffect(() => {
+    // Check if biometric is enabled
+    const biometricSaved = localStorage.getItem('biometric_enabled');
+    if (biometricSaved === 'true') {
+      setIsBiometricEnabled(true);
+    }
     // Fetch balances (Mocking the original fetch with direct DB call if possible, or keeping it as is assuming it's an API route that exists)
     // For this task I will keep it as is, but it should be moved to Firestore eventually.
     fetch(`/api/balance/${currentUserId}`)
@@ -121,6 +129,10 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
         setAmount(prev => prev + key);
       }
     } else {
+      if (key === 'biometric') {
+        setShowBiometricPrompt(true);
+        return;
+      }
       if (key === 'back') {
         setPin(prev => prev.slice(0, -1));
       } else if (key !== '.') {
@@ -147,6 +159,42 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
         return;
     }
     setStep('pin');
+    if (isBiometricEnabled) {
+      setTimeout(() => setShowBiometricPrompt(true), 500);
+    }
+  };
+
+  const handleBiometricAuth = async () => {
+    setIsProcessing(true);
+    setShowBiometricPrompt(false);
+    
+    try {
+      if ((window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'BIOMETRIC_AUTH_REQUEST' }));
+        await new Promise(r => setTimeout(r, 1000));
+      } else if (window.PublicKeyCredential) {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        
+        await navigator.credentials.get({
+          publicKey: {
+            challenge: challenge,
+            rpId: window.location.hostname,
+            userVerification: "preferred",
+            timeout: 60000
+          }
+        });
+      } else {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      
+      handleFinalConfirm('biometric', recipientAccount);
+    } catch (err) {
+      console.error('Biometric error:', err);
+      alert('Biometric verification failed');
+      setIsProcessing(false);
+      setPin('');
+    }
   };
 
   const handleFinalConfirm = async (submittedPin: string, recipient: string) => {
@@ -201,6 +249,47 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
 
   return (
     <div className="min-h-screen bg-[#014151] flex flex-col font-sans select-none overflow-hidden text-white relative">
+      <AnimatePresence>
+        {showBiometricPrompt && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-[#003855]/90 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white text-black p-8 rounded-[2rem] flex flex-col items-center shadow-2xl max-w-[85vw] w-full max-w-sm"
+            >
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-6">
+                <Fingerprint className="w-8 h-8 text-[#00bcd4]" />
+              </div>
+              <h2 className="text-xl font-bold mb-2 tracking-tight text-[#003855]">Biometric Transfer</h2>
+              <p className="text-gray-500 font-medium text-sm text-center max-w-[200px] mb-8">
+                Confirm your face or fingerprint to authorize payment
+              </p>
+              
+              <div className="flex gap-3 w-full">
+                <button 
+                  onClick={() => setShowBiometricPrompt(false)}
+                  className="flex-1 py-3.5 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm active:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleBiometricAuth}
+                  className="flex-1 py-3.5 bg-[#00bcd4] rounded-xl font-bold text-white text-sm active:bg-[#009aba] transition-colors"
+                >
+                  Scan
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background Decor */}
       <div className="absolute top-[-100px] right-[-100px] w-80 h-80 rounded-full border-[30px] border-white/5 pointer-events-none" />
       <div className="absolute top-[-50px] right-[-50px] w-60 h-60 rounded-full border-[20px] border-white/5 pointer-events-none" />
@@ -340,9 +429,9 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
       {/* Custom Keypad - ABA Style */}
       <div className="p-6 pb-12 z-10">
         <div className="grid grid-cols-3 gap-y-4 gap-x-8 mb-8">
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back'].map((key) => (
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9', step === 'pin' && isBiometricEnabled ? 'biometric' : '.', '0', 'back'].map((key, idx) => (
             <motion.button
-              key={key}
+              key={idx}
               whileTap={{ scale: 0.9 }}
               onClick={() => handleKeyPress(key)}
               className={`h-14 flex items-center justify-center text-white text-3xl font-medium active:bg-white/5 rounded-full transition-colors disabled:opacity-30`}
@@ -354,6 +443,8 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
                   <line x1="18" y1="9" x2="12" y2="15" />
                   <line x1="12" y1="9" x2="18" y2="15" />
                 </svg>
+              ) : key === 'biometric' ? (
+                 <Fingerprint className="w-8 h-8 opacity-80 text-[#37a7b8]" />
               ) : key === '.' ? (
                 <div className="w-2 h-2 bg-white/70 rounded-full" />
               ) : key}

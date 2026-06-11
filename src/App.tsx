@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bell, 
   Eye, 
@@ -113,6 +113,8 @@ import PaymentsHub from './components/PaymentsHub';
 import ECashHub from './components/ECashHub';
 import UsefulHub from './components/UsefulHub';
 import Receipt from './components/Receipt';
+import ProfileDetailScreen from './components/ProfileDetailScreen';
+import scanQrIcon from './assets/images/regenerated_image_1781188262145.png';
 
 const HapticButton = ({ children, onClick, className, ...props }: any) => {
   const [ripples, setRipples] = useState<{x: number, y: number, id: number}[]>([]);
@@ -226,11 +228,14 @@ export default function App() {
     performAuth();
   }, []);
   const [showProfile, setShowProfile] = useState(false);
-  const [screen, setScreen] = useState<'loginPin' | 'home' | 'scanner' | 'payment' | 'transfers' | 'history' | 'admin' | 'receiveMoney' | 'cards' | 'addMoney' | 'govServices' | 'paymentsHub' | 'ecash' | 'useful' | 'receipt'>('loginPin');
+  const [screen, setScreen] = useState<'loginPin' | 'home' | 'scanner' | 'payment' | 'transfers' | 'history' | 'admin' | 'receiveMoney' | 'cards' | 'addMoney' | 'govServices' | 'paymentsHub' | 'ecash' | 'useful' | 'receipt' | 'profile'>('loginPin');
   const [historyType, setHistoryType] = useState<'receive' | 'send'>('receive');
   const [scannedData, setScannedData] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<'km' | 'en' | 'zh'>('en');
   const [balances, setBalances] = useState<Record<string, number>>({ KHR: 1500000, USD: 2500 });
+  const [hideBalances, setHideBalances] = useState(() => {
+    return localStorage.getItem('hide_balances_enabled') === 'true';
+  });
 
   const fetchBalance = () => {
     if (!currentUser) return;
@@ -261,6 +266,10 @@ export default function App() {
 
   const onLoginSuccess = async (user: any) => {
     setCurrentUser(user);
+    if (user.name) {
+      setSavedUserName(user.name);
+      localStorage.setItem('savedUserName', user.name);
+    }
     // Register with socket
     socket.emit('register', { userId: user.id, role: user.role });
     
@@ -300,7 +309,8 @@ export default function App() {
   };
 
   const currentUserId = currentUser?.viewingId || currentUser?.id;
-  const currentUserName = currentUser?.viewingName || currentUser?.name || 'So Dawin!!';
+  const [savedUserName, setSavedUserName] = useState(() => localStorage.getItem('savedUserName') || 'So Dawin!');
+  const currentUserName = currentUser?.viewingName || currentUser?.name || savedUserName;
   const currentUserAccountNo = currentUser?.accountNo || '000 789 632';
 
   const [activeCurrency, setActiveCurrency] = useState<'USD' | 'KHR'>('USD');
@@ -331,7 +341,7 @@ export default function App() {
   };
 
   const currentBalance = balances[activeCurrency] !== undefined 
-    ? formatBalanceValue(displayBalance, activeCurrency) 
+    ? (hideBalances ? (activeCurrency === 'USD' ? '$ ••••••' : '•••••• ៛') : formatBalanceValue(displayBalance, activeCurrency)) 
     : (activeCurrency === 'USD' ? '$0.00' : '0 ៛');
 
   const mainGrid = [
@@ -585,6 +595,25 @@ export default function App() {
         </motion.div>
       );
     }
+    
+    if (screen === 'profile') {
+      return (
+        <motion.div
+           key="profile"
+           initial={{ opacity: 0, x: 20 }}
+           animate={{ opacity: 1, x: 0 }}
+           exit={{ opacity: 0, x: -20 }}
+        >
+          <ProfileDetailScreen 
+            onBack={() => setScreen('home')} 
+            user={{
+              name: currentUserName,
+              role: currentUser?.role || 'user'
+            }} 
+          />
+        </motion.div>
+      );
+    }
 
     return (
       <motion.div 
@@ -672,12 +701,11 @@ export default function App() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => {
-                sessionStorage.removeItem('aba_auth_token');
-                window.location.reload();
+                setScreen('scanner');
               }} 
-              className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-white/10 overflow-hidden"
+              className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-lg border border-white/10 overflow-hidden p-1.5"
             >
-              <img src="https://e7.pngegg.com/pngimages/566/473/png-clipart-power-on-and-off-logo-red-power-button-electronics-power-buttons-thumbnail.png" alt="Exit" className="w-full h-full object-cover" />
+              <img src={scanQrIcon} alt="Scan QR" className="w-full h-full object-contain" />
             </HapticButton>
           </div>
         </header>
@@ -706,6 +734,18 @@ export default function App() {
                     </span>
                  </div>
               </div>
+              <button
+                type="button"
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-500 hover:bg-gray-100 active:scale-95 transition-all border border-gray-100 shadow-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const newVal = !hideBalances;
+                  setHideBalances(newVal);
+                  localStorage.setItem('hide_balances_enabled', newVal.toString());
+                }}
+              >
+                {hideBalances ? <EyeOff className="w-5 h-5 text-[#00bcd4]" /> : <Eye className="w-5 h-5 text-gray-400" />}
+              </button>
             </div>
             
             <div className="flex items-center gap-2 mt-3">
@@ -879,6 +919,12 @@ export default function App() {
           role: currentUser?.role || 'user'
         }}
         onLogout={handleLogout}
+        hideBalances={hideBalances}
+        onToggleHideBalances={setHideBalances}
+        onViewProfile={() => {
+          setShowProfile(false);
+          setScreen('profile');
+        }}
       />
 
       {/* OS Navigation Indicator */}
