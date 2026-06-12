@@ -19,13 +19,19 @@ if (dbUrl) {
   isPostgres = true;
   console.log('Database: Using PostgreSQL');
 } else {
-  let dbPath = path.resolve(__dirname, 'dev.db');
+  let dbPath = path.join(process.cwd(), 'dev.db');
   // Vercel serverless functions have a read-only filesystem except for /tmp
   if (process.env.VERCEL) {
     dbPath = '/tmp/dev.db';
     if (!fs.existsSync(dbPath)) {
       try {
-        fs.copyFileSync(path.resolve(__dirname, 'dev.db'), dbPath);
+        const srcDb = path.join(process.cwd(), 'dev.db');
+        if (fs.existsSync(srcDb)) {
+          fs.copyFileSync(srcDb, dbPath);
+          console.log('Successfully copied dev.db to /tmp/dev.db');
+        } else {
+          console.log('dev.db not found in workspace root, SQLite will initialize via schema.sql');
+        }
       } catch (err) {
         console.error('Failed to copy dev.db to /tmp', err);
       }
@@ -47,7 +53,7 @@ async function initPostgres() {
     `);
     if (!res.rows[0].exists) {
       console.log('Initializing PostgreSQL schema...');
-      const schemaPath = path.resolve(__dirname, 'schema.sql');
+      const schemaPath = path.join(process.cwd(), 'schema.sql');
       const schema = fs.readFileSync(schemaPath, 'utf8');
       
       // Execute the schema
@@ -88,7 +94,7 @@ async function initPostgres() {
 
 // Initialize SQLite schema if active
 if (!isPostgres && db) {
-  const schemaPath = path.resolve(__dirname, 'schema.sql');
+  const schemaPath = path.join(process.cwd(), 'schema.sql');
   if (fs.existsSync(schemaPath)) {
     const schema = fs.readFileSync(schemaPath, 'utf8');
     try {
@@ -212,7 +218,7 @@ if (isPostgres) {
  * Universal Database Reset Function
  */
 async function resetDatabase() {
-  const schemaPath = path.resolve(__dirname, 'schema.sql');
+  const schemaPath = path.join(process.cwd(), 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
 
   if (isPostgres) {

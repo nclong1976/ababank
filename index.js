@@ -497,11 +497,17 @@ async function initializeApp() {
   });
 
   app.post('/api/auth/pin', async (req, res) => {
-    const { pin } = req.body;
+    const { pin, name } = req.body;
     if (!pin) return res.status(400).json({ ok: false, error: 'PIN is required' });
 
     try {
-      const { rows } = await db.query('SELECT id, name, email, role, is_locked FROM users WHERE pin = $1', [pin]);
+      let queryText = 'SELECT id, name, email, role, is_locked FROM users WHERE pin = $1';
+      const queryParams = [pin];
+      if (name) {
+        queryText += ' AND name = $2';
+        queryParams.push(name);
+      }
+      const { rows } = await db.query(queryText, queryParams);
       if (rows.length) {
         if (rows[0].is_locked) {
           return res.status(403).json({ ok: false, error: 'Tài khoản đã bị khóa. Vui lòng liên hệ Admin.' });

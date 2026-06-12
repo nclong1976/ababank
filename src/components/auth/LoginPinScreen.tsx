@@ -164,7 +164,7 @@ export default function LoginPinScreen({ onSuccess, userName }: LoginPinScreenPr
       const res = await fetch('/api/auth/pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: p })
+        body: JSON.stringify({ pin: p, name: userName })
       });
       const data = await res.json();
       if (data.ok) {
