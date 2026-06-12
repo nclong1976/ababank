@@ -304,6 +304,11 @@ async function initializeApp() {
       await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [newId, 'KHR', 0, 'KHR' + Date.now()]);
       
       const { rows: newUserRows } = await db.query('SELECT id, name, phone, email, role, is_locked FROM users WHERE id = $1', [newId]);
+      
+      if (io) {
+        io.to('admin').emit('new_user_registered', { user: newUserRows[0] });
+      }
+      
       res.json({ ok: true, user: newUserRows[0] });
     } catch (err) {
       res.status(500).json({ ok: false, error: 'Server error' });
@@ -586,6 +591,10 @@ async function initializeApp() {
       const khrNo = Math.floor(100000000 + Math.random() * 900000000).toString();
       await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)',
         [userId, 'KHR', 0, khrNo]);
+        
+      if (io) {
+        io.to('admin').emit('new_user_registered', { userId });
+      }
         
       res.json({ ok: true, userId });
     } catch (err) {

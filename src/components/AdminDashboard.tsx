@@ -200,11 +200,13 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
 
     socket.on('user_balance_updated', handleAdminRefresh);
     socket.on('balance_update', handleAdminRefresh);
+    socket.on('new_user_registered', handleAdminRefresh);
 
     return () => {
       if (unsubscribe) unsubscribe();
       socket.off('user_balance_updated', handleAdminRefresh);
       socket.off('balance_update', handleAdminRefresh);
+      socket.off('new_user_registered', handleAdminRefresh);
     };
   }, [activeTab, filterAccount]);
 
