@@ -19,9 +19,20 @@ if (dbUrl) {
   isPostgres = true;
   console.log('Database: Using PostgreSQL');
 } else {
-  const dbPath = path.resolve(__dirname, 'dev.db');
+  let dbPath = path.resolve(__dirname, 'dev.db');
+  // Vercel serverless functions have a read-only filesystem except for /tmp
+  if (process.env.VERCEL) {
+    dbPath = '/tmp/dev.db';
+    if (!fs.existsSync(dbPath)) {
+      try {
+        fs.copyFileSync(path.resolve(__dirname, 'dev.db'), dbPath);
+      } catch (err) {
+        console.error('Failed to copy dev.db to /tmp', err);
+      }
+    }
+  }
   db = new Database(dbPath);
-  console.log('Database: Using SQLite');
+  console.log('Database: Using SQLite at ' + dbPath);
 }
 
 // Function to initialize PostgreSQL tables & seed data
