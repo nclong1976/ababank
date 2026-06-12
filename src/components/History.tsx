@@ -89,6 +89,7 @@ export default function History({ type, onBack, currentUserId }: HistoryProps) {
             transactionDate={selectedTx.createdAt}
             remainingBalance={selectedTx.balanceAfter}
             type={selectedTx.type as 'send' | 'receive'}
+            note={selectedTx.note}
             onBack={() => setSelectedTx(null)}
           />
         )}

@@ -14,6 +14,7 @@ interface ReceiptProps {
   transactionDate?: any;
   remainingBalance?: any;
   type?: any;
+  note?: any;
   transactionDetails?: {
     amount: string;
     date: string;
@@ -24,6 +25,7 @@ interface ReceiptProps {
     receiverAccount: string;
     bankName: string;
     fee: string;
+    note?: string;
   };
 }
 
@@ -39,7 +41,8 @@ export default function Receipt({
   transactionId,
   transactionDate,
   remainingBalance,
-  type
+  type,
+  note
 }: ReceiptProps) {
   const details = transactionDetails || {
     amount: amount ? `${amount} ${currency || 'USD'}` : '246.00',
@@ -50,8 +53,13 @@ export default function Receipt({
     receiverName: recipientName || 'RITHY PHUONG',
     receiverAccount: recipientAccount || '009 876 543',
     bankName: 'ABA Bank',
-    fee: '0.00'
+    fee: '0.00',
+    note: note
   };
+
+  const isReceive = type === 'receive';
+  const displayPartyName = isReceive ? details.senderName : details.receiverName;
+  const displayAmount = details.amount;
 
   return (
     <motion.div 
@@ -72,12 +80,14 @@ export default function Receipt({
         <div className="bg-white rounded-[4px] w-full max-w-[340px] p-5 shadow-lg">
           {/* Header */}
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-11 h-11 bg-[#005370] rounded-full flex items-center justify-center text-white text-[16px] font-bold">
-              {details.receiverName.charAt(0).toUpperCase()}
+            <div className="w-11 h-11 bg-[#005370] rounded-full flex items-center justify-center text-white text-[16px] font-bold uppercase">
+              {displayPartyName.charAt(0)}
             </div>
             <div>
-              <p className="text-[15px] font-bold text-gray-900 leading-tight">-{details.amount} USD</p>
-              <p className="text-[13px] text-gray-700 uppercase tracking-wide mt-0.5">{details.receiverName}</p>
+              <p className={`text-[15px] font-bold leading-tight ${isReceive ? 'text-[#007baf]' : 'text-gray-900'}`}>
+                {isReceive ? '+' : '-'}{displayAmount}
+              </p>
+              <p className="text-[13px] text-gray-700 uppercase tracking-wide mt-0.5">{displayPartyName}</p>
             </div>
           </div>
           
@@ -96,6 +106,20 @@ export default function Receipt({
             <div className="flex justify-between items-start gap-4">
               <span className="text-[12px] text-gray-500 w-[100px] shrink-0">From account:</span>
               <span className="text-[12px] text-gray-800 text-right font-medium">{details.senderAccount}</span>
+            </div>
+            <div className="flex justify-between items-start gap-4">
+              <span className="text-[12px] text-gray-500 w-[100px] shrink-0">To account:</span>
+              <span className="text-[12px] text-gray-800 text-right font-medium">{details.receiverAccount}</span>
+            </div>
+            {details.note && (
+              <div className="flex justify-between items-start gap-4">
+                <span className="text-[12px] text-gray-500 w-[100px] shrink-0">Remark:</span>
+                <span className="text-[12px] text-gray-800 text-right font-medium">{details.note}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-start gap-4">
+              <span className="text-[12px] text-gray-500 w-[100px] shrink-0">Fee:</span>
+              <span className="text-[12px] text-gray-800 text-right font-medium">{details.fee} {currency || 'USD'}</span>
             </div>
           </div>
         </div>

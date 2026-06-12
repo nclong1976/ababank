@@ -837,10 +837,18 @@ async function initializeApp() {
       const finalNote = note || `Admin Adjustment (${type === 'plus' ? '+' : '-'})`;
       const partyName = type === 'plus' ? 'ADMIN TOP UP' : 'ADMIN ADJUSTMENT';
       
+      let adminAccountNo = '123 456 789'; // Default fallback
+      if (adminId) {
+        const { rows: adminAccRows } = await db.query('SELECT account_no FROM accounts WHERE user_id = $1', [adminId]);
+        if (adminAccRows.length && adminAccRows[0].account_no) {
+          adminAccountNo = adminAccRows[0].account_no;
+        }
+      }
+
       await db.query(`
-        INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, admin_id, note, currency, party_name)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      `, [txId, userId, amt, txType, balanceBefore, balanceAfter, adminId || null, finalNote, currency, partyName]);
+        INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, admin_id, note, currency, party_name, party_account_no)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `, [txId, userId, amt, txType, balanceBefore, balanceAfter, adminId || null, finalNote, currency, partyName, adminAccountNo]);
 
       const transactionPayload = {
         id: txId,
