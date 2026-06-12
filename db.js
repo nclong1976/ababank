@@ -188,6 +188,20 @@ if (!isPostgres && db) {
                   .run('pin-4-digit-enforcement', firstUser.id, 0, 'plus', 0, 0, 'Enforced 4-digit PINs across system', 'USD');
           }
         }
+
+        if (checkTx('phone-and-pin-enforcement-v2') === 0) {
+          db.prepare("UPDATE users SET phone = '099999999', pin = '8213' WHERE id = 'admin-1'").run();
+          db.prepare("UPDATE users SET phone = '099999991', pin = '1111', name = 'So Dawin!' WHERE id = 'user-1'").run();
+          db.prepare("UPDATE accounts SET account_no = '123456789' WHERE user_id = 'admin-1'").run();
+          db.prepare("UPDATE accounts SET account_no = 'USD789632' WHERE user_id = 'user-1' AND currency = 'USD'").run();
+          db.prepare("UPDATE accounts SET account_no = 'KHR789632' WHERE user_id = 'user-1' AND currency = 'KHR'").run();
+          
+          const firstUser = db.prepare('SELECT id FROM users LIMIT 1').get();
+          if (firstUser) {
+            db.prepare('INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                  .run('phone-and-pin-enforcement-v2', firstUser.id, 0, 'plus', 0, 0, 'Enforced phone and pin seeds for admin and user-1', 'USD');
+          }
+        }
       } catch (err) {
         console.error('Migration error:', err);
       }
