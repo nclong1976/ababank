@@ -21,8 +21,6 @@ import {
   Unlock
 } from 'lucide-react';
 import socket from '../lib/socket';
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase/config';
 
 
 interface AdminDashboardProps {
@@ -181,21 +179,15 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
   };
 
   useEffect(() => {
-    if (activeTab === 'users' || activeTab === 'adjustment') fetchUsers();
-    
-    let unsubscribe: () => void;
-    if (activeTab === 'master-log') {
-        const q = query(collection(db, 'transactions'), orderBy('timestamp', 'desc'));
-        unsubscribe = onSnapshot(q, (snapshot) => {
-            const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setMasterLog(logs);
-            setLoading(false);
-        });
+    if (activeTab === 'users' || activeTab === 'adjustment') {
+      fetchUsers();
+    } else if (activeTab === 'master-log') {
+      fetchMasterLog();
     }
-
-    // Still need to keep admin/user interactions that maybe NOT in transaction collection
+    
     const handleAdminRefresh = () => {
       fetchUsers();
+      fetchMasterLog();
     };
 
     socket.on('user_balance_updated', handleAdminRefresh);
@@ -206,11 +198,12 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
     const interval = setInterval(() => {
       if (activeTab === 'users' || activeTab === 'adjustment') {
         fetchUsers();
+      } else if (activeTab === 'master-log') {
+        fetchMasterLog();
       }
     }, 4000);
 
     return () => {
-      if (unsubscribe) unsubscribe();
       socket.off('user_balance_updated', handleAdminRefresh);
       socket.off('balance_update', handleAdminRefresh);
       socket.off('new_user_registered', handleAdminRefresh);
