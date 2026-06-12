@@ -32,6 +32,7 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
   const [pin, setPin] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [balances, setBalances] = useState<Record<string, number>>({ USD: 0, KHR: 0 });
+  const [accountNumbers, setAccountNumbers] = useState<Record<string, string>>({ USD: '008 661 102', KHR: '000 639 999' });
   const [sourceCurrency, setSourceCurrency] = useState<'USD' | 'KHR'>('USD');
   const [qrValid, setQrValid] = useState(true);
   const [txData, setTxData] = useState<any>(null);
@@ -46,12 +47,12 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
     if (biometricSaved === 'true') {
       setIsBiometricEnabled(true);
     }
-    // Fetch balances (Mocking the original fetch with direct DB call if possible, or keeping it as is assuming it's an API route that exists)
-    // For this task I will keep it as is, but it should be moved to Firestore eventually.
+    // Fetch balances
     fetch(`/api/balance/${currentUserId}`)
       .then(res => res.json())
       .then(data => {
         if (data.balances) setBalances(data.balances);
+        if (data.accountNumbers) setAccountNumbers(data.accountNumbers);
       });
 
     if (scannedData) {
@@ -71,7 +72,7 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
     }
   }, [scannedData, currentUserId]);
 
-  const sourceAccountNo = sourceCurrency === 'USD' ? '008 661 102' : '000 639 999';
+  const sourceAccountNo = accountNumbers[sourceCurrency] || (sourceCurrency === 'USD' ? '008 661 102' : '000 639 999');
   const availableBalance = balances[sourceCurrency] || 0;
 
   const currentDeductAmount = useMemo(() => {

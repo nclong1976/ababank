@@ -168,6 +168,9 @@ if (!isPostgres && db) {
         if (!accountMeta.some(c => c.name === 'account_no')) {
           db.prepare("ALTER TABLE accounts ADD COLUMN account_no TEXT").run();
         }
+        if (!accountMeta.some(c => c.name === 'updated_at')) {
+          db.prepare("ALTER TABLE accounts ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP").run();
+        }
 
         if (checkTx('pin-4-digit-enforcement') === 0) {
           // Force all PINs to be 4 digits (truncate if longer)

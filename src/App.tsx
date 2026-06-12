@@ -233,6 +233,7 @@ export default function App() {
   const [scannedData, setScannedData] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<'km' | 'en' | 'zh'>('en');
   const [balances, setBalances] = useState<Record<string, number>>({ KHR: 1500000, USD: 2500 });
+  const [accountNumbers, setAccountNumbers] = useState<Record<string, string>>({ KHR: 'KHR789632', USD: 'USD789632' });
   const [hideBalances, setHideBalances] = useState(() => {
     return localStorage.getItem('hide_balances_enabled') === 'true';
   });
@@ -245,6 +246,9 @@ export default function App() {
       .then(data => {
         if (data.ok && data.balances) {
           setBalances(data.balances);
+        }
+        if (data.ok && data.accountNumbers) {
+          setAccountNumbers(data.accountNumbers);
         }
       })
       .catch(console.error);
@@ -261,7 +265,16 @@ export default function App() {
     };
 
     socket.on('balance_update', onBalanceUpdate);
-    return () => socket.off('balance_update', onBalanceUpdate);
+
+    // Polling fallback every 5 seconds for serverless real-time sync
+    const interval = setInterval(() => {
+      fetchBalance();
+    }, 5000);
+
+    return () => {
+      socket.off('balance_update', onBalanceUpdate);
+      clearInterval(interval);
+    };
   }, [currentUser]);
 
   const onLoginSuccess = async (user: any) => {
@@ -314,7 +327,7 @@ export default function App() {
   const currentUserId = currentUser?.viewingId || currentUser?.id;
   const [savedUserName, setSavedUserName] = useState(() => localStorage.getItem('savedUserName') || 'So Dawin!');
   const currentUserName = currentUser?.viewingName || currentUser?.name || savedUserName;
-  const currentUserAccountNo = currentUser?.accountNo || '000 789 632';
+  const currentUserAccountNo = accountNumbers[activeCurrency] || (activeCurrency === 'USD' ? 'USD789632' : 'KHR789632');
 
   const [activeCurrency, setActiveCurrency] = useState<'USD' | 'KHR'>('USD');
   const [displayBalance, setDisplayBalance] = useState(0);

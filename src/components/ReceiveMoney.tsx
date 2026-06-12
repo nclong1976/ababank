@@ -16,8 +16,9 @@ export default function ReceiveMoney({ onBack, userName, accountNo, language, us
   const [currency, setCurrency] = useState<'USD' | 'KHR'>('USD');
   const [amount, setAmount] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [accountNumbers, setAccountNumbers] = useState<Record<string, string>>({ USD: accountNo, KHR: '000 639 999' });
 
-  const displayAccountNo = currency === 'USD' ? accountNo : '000 639 999';
+  const displayAccountNo = accountNumbers[currency] || (currency === 'USD' ? accountNo : '000 639 999');
 
   const t = {
     title: language === 'km' ? 'ទទួលប្រាក់' : 'Receive Money',
@@ -63,6 +64,13 @@ export default function ReceiveMoney({ onBack, userName, accountNo, language, us
       })
       .catch(err => console.error(err))
       .finally(() => setLoadingSystem(false));
+
+    fetch(`/api/balance/${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.accountNumbers) setAccountNumbers(data.accountNumbers);
+      })
+      .catch(err => console.error(err));
   }, [userId]);
 
   return (

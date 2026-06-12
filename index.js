@@ -143,13 +143,15 @@ async function initializeApp() {
   app.get('/api/balance/:id', async (req, res) => {
     const userId = req.params.id;
     try {
-      const { rows } = await db.query('SELECT currency, balance FROM accounts WHERE user_id = $1', [userId]);
+      const { rows } = await db.query('SELECT currency, balance, account_no FROM accounts WHERE user_id = $1', [userId]);
       if (rows.length) {
         const balances = {};
+        const accountNumbers = {};
         rows.forEach(r => {
           balances[r.currency] = parseFloat(r.balance);
+          accountNumbers[r.currency] = r.account_no || '';
         });
-        res.json({ ok: true, balances });
+        res.json({ ok: true, balances, accountNumbers });
       } else {
         res.status(404).json({ ok: false, error: 'User accounts not found' });
       }

@@ -202,11 +202,19 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
     socket.on('balance_update', handleAdminRefresh);
     socket.on('new_user_registered', handleAdminRefresh);
 
+    // Polling fallback every 4 seconds for serverless real-time sync
+    const interval = setInterval(() => {
+      if (activeTab === 'users' || activeTab === 'adjustment') {
+        fetchUsers();
+      }
+    }, 4000);
+
     return () => {
       if (unsubscribe) unsubscribe();
       socket.off('user_balance_updated', handleAdminRefresh);
       socket.off('balance_update', handleAdminRefresh);
       socket.off('new_user_registered', handleAdminRefresh);
+      clearInterval(interval);
     };
   }, [activeTab, filterAccount]);
 
