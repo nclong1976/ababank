@@ -1,7 +1,11 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import {inject} from '@vercel/analytics';
 import App from './App.tsx';
 import './index.css';
+
+// Initialize Vercel Web Analytics
+inject();
 
 // Fix for BarcodeDetector errors in some environments
 // If BarcodeDetector is available but the service is missing, it can cause crashes.
