@@ -296,7 +296,7 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
       <div className="absolute top-[-50px] right-[-50px] w-60 h-60 rounded-full border-[20px] border-white/5 pointer-events-none" />
 
       {/* Header */}
-      <header className="p-4 flex items-center justify-between z-10">
+      <header className="p-4 flex items-center justify-between z-10 safe-padding-top">
         <button onClick={step === 'pin' ? () => setStep('input') : onBack} className="p-2 transition-transform active:scale-90">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-7 h-7">
             <path d="M15 18l-6-6 6-6" />

@@ -637,7 +637,7 @@ export default function App() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="min-h-screen bg-linear-to-b from-[#005c7a] via-[#003b4d] to-[#011a24] p-4 pb-20 max-w-md mx-auto relative overflow-hidden font-sans"
+        className="min-h-screen bg-linear-to-b from-[#005c7a] via-[#003b4d] to-[#011a24] p-4 pb-20 max-w-md mx-auto relative overflow-hidden font-sans safe-padding-top"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -677,7 +677,7 @@ export default function App() {
         <div className="absolute bottom-1/4 -right-20 w-64 h-64 bg-blue-500/10 blur-[100px] rounded-full" />
 
         {/* Header */}
-        <header className="relative flex items-center justify-between mt-8 mb-6">
+        <header className="relative flex items-center justify-between mt-2 mb-6">
           <div className="flex items-center gap-3">
             <motion.div 
                whileHover={{ scale: 1.05 }}

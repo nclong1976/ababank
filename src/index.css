@@ -64,3 +64,13 @@ input, textarea {
   top: 14.53%;
   bottom: 70.32%;
 }
+
+/* Safe area padding utilities for notches and device viewports */
+.safe-padding-top {
+  padding-top: max(1rem, env(safe-area-inset-top)) !important;
+}
+
+.safe-padding-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+}
+

@@ -76,7 +76,7 @@ export default function ReceiveMoney({ onBack, userName, accountNo, language, us
   return (
     <div className="min-h-screen bg-[#011a24] flex flex-col font-sans">
       {/* Header */}
-      <header className="p-4 flex items-center justify-between">
+      <header className="p-4 flex items-center justify-between safe-padding-top">
         <button onClick={onBack} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
           <ChevronLeft className="w-6 h-6" />
         </button>

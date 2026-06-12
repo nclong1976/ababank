@@ -263,7 +263,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
 
   return (
     <div className="min-h-screen bg-[#011a24] text-white flex flex-col font-sans max-w-md mx-auto relative overflow-hidden">
-      <header className="p-4 pt-10 bg-[#003b4d] shadow-lg sticky top-0 z-10">
+      <header className="p-4 bg-[#003b4d] shadow-lg sticky top-0 z-10 safe-padding-top">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors">

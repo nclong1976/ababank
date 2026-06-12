@@ -105,11 +105,11 @@ export default function Transfers({ onBack, onScanQR, onShowReceipt, currentUser
         )}
       </AnimatePresence>
 
-      <header className="flex items-center p-4 pt-10 text-white relative">
+      <header className="flex items-center p-4 text-white relative safe-padding-top">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:scale-95 transition-colors z-10">
           <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
         </button>
-        <h1 className="text-[19px] font-medium tracking-wide flex-1 text-center absolute inset-0 flex items-center justify-center pt-10 font-sans">
+        <h1 className="text-[19px] font-medium tracking-wide flex-1 text-center absolute inset-x-0 bottom-4 flex items-center justify-center font-sans">
            Transfer ABA
         </h1>
       </header>
