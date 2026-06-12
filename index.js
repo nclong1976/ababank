@@ -513,7 +513,7 @@ async function initializeApp() {
       }
     } catch (err) {
       console.error(err);
-      res.status(500).json({ ok: false, error: 'Server error' });
+      res.status(500).json({ ok: false, error: err.message || 'Server error' });
     }
   });
 
@@ -534,7 +534,7 @@ async function initializeApp() {
       }
     } catch (err) {
       console.error(err);
-      res.status(500).json({ ok: false, error: 'Server error' });
+      res.status(500).json({ ok: false, error: err.message || 'Server error' });
     }
   });
 
