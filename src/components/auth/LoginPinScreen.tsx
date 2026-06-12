@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Fingerprint } from 'lucide-react';
+import { startAuthentication } from '@simplewebauthn/browser';
 
 interface LoginPinScreenProps {
   onSuccess: (user: any) => void;
@@ -47,46 +48,61 @@ export default function LoginPinScreen({ onSuccess, userName }: LoginPinScreenPr
     setShowBiometricPrompt(false);
     
     try {
+      const phone = localStorage.getItem('savedUserPhone');
+      if (!phone) {
+        throw new Error("Please login with Phone & PIN first.");
+      }
+
       if ((window as any).ReactNativeWebView) {
         // Native app bridge fallback
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'BIOMETRIC_AUTH_REQUEST' }));
-        // In a real app we'd wait for a message event from React Native here.
-        // For simulation we just wait a bit.
         await new Promise(r => setTimeout(r, 1000));
-      } else if (window.PublicKeyCredential) {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
         
-        await navigator.credentials.get({
-          publicKey: {
-            challenge: challenge,
-            rpId: window.location.hostname,
-            userVerification: "preferred",
-            timeout: 60000
-          }
+        const res = await fetch('/api/auth/biometric', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userName })
         });
+        const data = await res.json();
+        if (data.ok) {
+          logSecurityActivity('Biometric Login', 'success');
+          onSuccess(data.user);
+        } else {
+          throw new Error("Biometric auth failed");
+        }
       } else {
-        await new Promise(r => setTimeout(r, 1000));
-      }
+        const resp = await fetch('/api/auth/webauthn/generate-authentication-options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone })
+        });
+        const data = await resp.json();
+        if (!data.ok) throw new Error(data.error || 'Failed to generate options');
 
-      // If we reach here, we consider biometric successful (either simulated or WebAuthn passed)
-      const res = await fetch('/api/auth/biometric', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userName })
-      });
-      const data = await res.json();
-      if (data.ok) {
-        logSecurityActivity('Biometric Login', 'success');
-        onSuccess(data.user);
-      } else {
-        throw new Error("Biometric auth failed");
+        const asseResp = await startAuthentication({ optionsJSON: data.options });
+
+        const verificationResp = await fetch('/api/auth/webauthn/verify-authentication', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone,
+            response: asseResp
+          }),
+        });
+        
+        const verificationJSON = await verificationResp.json();
+        if (verificationJSON.ok && verificationJSON.user) {
+          logSecurityActivity('Biometric Login', 'success');
+          onSuccess(verificationJSON.user);
+        } else {
+          throw new Error(verificationJSON.error || "Biometric auth failed");
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Biometric error:', err);
       logSecurityActivity('Biometric Login', 'failed');
       setIsError(true);
-      setErrorMessage('Biometric verification failed');
+      setErrorMessage(err.message || 'Biometric verification failed');
       setPin('');
       setIsProcessing(false);
     }

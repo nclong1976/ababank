@@ -10,6 +10,12 @@ const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { createServer: createViteServer } = require('vite');
+const {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} = require('@simplewebauthn/server');
 require('dotenv').config();
 
 let io = null;
@@ -281,6 +287,160 @@ async function initializeApp() {
     "Tep Sovann", "Chhay Makara", "Nhim Rotha", "Khieu Sreyneath",
     "Sokha Neth", "Vathana Chey", "Bopha Pich", "Chantha Sao"
   ];
+
+  const rpName = 'ABA Bank';
+
+  app.post('/api/auth/webauthn/generate-registration-options', async (req, res) => {
+    const { userId } = req.body;
+    try {
+      const { rows: userRows } = await db.query('SELECT id, name, email FROM users WHERE id = $1', [userId]);
+      if (!userRows.length) return res.status(404).json({ ok: false, error: 'User not found' });
+      const user = userRows[0];
+      
+      const { rows: credRows } = await db.query('SELECT id FROM webauthn_credentials WHERE user_id = $1', [userId]);
+
+      const rpID = req.hostname;
+      const options = await generateRegistrationOptions({
+        rpName,
+        rpID,
+        userID: Buffer.from(user.id),
+        userName: user.name || user.id,
+        excludeCredentials: credRows.map(cred => ({
+          id: cred.id, // we will decode base64url when saving
+          type: 'public-key',
+        })),
+        authenticatorSelection: {
+          residentKey: 'preferred',
+          userVerification: 'preferred',
+        },
+      });
+
+      await db.query('UPDATE users SET current_challenge = $1 WHERE id = $2', [options.challenge, user.id]);
+      res.json({ ok: true, options });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  app.post('/api/auth/webauthn/verify-registration', async (req, res) => {
+    const { userId, response } = req.body;
+    try {
+      const { rows: userRows } = await db.query('SELECT id, current_challenge FROM users WHERE id = $1', [userId]);
+      if (!userRows.length) return res.status(404).json({ ok: false, error: 'User not found' });
+      const user = userRows[0];
+
+      if (!user.current_challenge) return res.status(400).json({ ok: false, error: 'Challenge not found' });
+
+      const expectedOrigin = req.headers.origin || \`https://\${req.hostname}\`;
+
+      const verification = await verifyRegistrationResponse({
+        response,
+        expectedChallenge: user.current_challenge,
+        expectedOrigin,
+        expectedRPID: req.hostname,
+      });
+
+      if (verification.verified && verification.registrationInfo) {
+        const { credentialID, credentialPublicKey, counter, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+        
+        await db.query(\`
+          INSERT INTO webauthn_credentials (id, user_id, public_key, counter, device_type, backed_up)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        \`, [
+          Buffer.from(credentialID).toString('base64url'), 
+          userId, 
+          Buffer.from(credentialPublicKey).toString('base64url'), 
+          counter, 
+          credentialDeviceType, 
+          credentialBackedUp ? 1 : 0
+        ]);
+
+        await db.query('UPDATE users SET current_challenge = NULL WHERE id = $1', [userId]);
+        res.json({ ok: true, verified: true });
+      } else {
+        res.status(400).json({ ok: false, error: 'Verification failed' });
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/auth/webauthn/generate-authentication-options', async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ ok: false, error: 'Phone is required' });
+    
+    try {
+      const { rows: userRows } = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+      if (!userRows.length) return res.status(404).json({ ok: false, error: 'User not found' });
+      const userId = userRows[0].id;
+
+      const { rows: credRows } = await db.query('SELECT id FROM webauthn_credentials WHERE user_id = $1', [userId]);
+      const allowCredentials = credRows.map(cred => ({
+        id: cred.id,
+        type: 'public-key',
+      }));
+
+      const rpID = req.hostname;
+      const options = await generateAuthenticationOptions({
+        rpID,
+        allowCredentials,
+        userVerification: 'preferred',
+      });
+
+      await db.query('UPDATE users SET current_challenge = $1 WHERE id = $2', [options.challenge, userId]);
+      res.json({ ok: true, options });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
+  app.post('/api/auth/webauthn/verify-authentication', async (req, res) => {
+    const { phone, response } = req.body;
+    try {
+      const { rows: userRows } = await db.query('SELECT id, current_challenge FROM users WHERE phone = $1', [phone]);
+      if (!userRows.length) return res.status(404).json({ ok: false, error: 'User not found' });
+      const user = userRows[0];
+
+      if (!user.current_challenge) return res.status(400).json({ ok: false, error: 'Challenge not found' });
+
+      const { rows: credRows } = await db.query('SELECT public_key, counter FROM webauthn_credentials WHERE id = $1', [response.id]);
+      if (!credRows.length) return res.status(404).json({ ok: false, error: 'Credential not found' });
+      const cred = credRows[0];
+
+      const expectedOrigin = req.headers.origin || \`https://\${req.hostname}\`;
+
+      const verification = await verifyAuthenticationResponse({
+        response,
+        expectedChallenge: user.current_challenge,
+        expectedOrigin,
+        expectedRPID: req.hostname,
+        authenticator: {
+          credentialID: Buffer.from(response.id, 'base64url'),
+          credentialPublicKey: Buffer.from(cred.public_key, 'base64url'),
+          counter: cred.counter,
+        },
+      });
+
+      if (verification.verified) {
+        await db.query('UPDATE webauthn_credentials SET counter = $1 WHERE id = $2', [verification.authenticationInfo.newCounter, response.id]);
+        await db.query('UPDATE users SET current_challenge = NULL WHERE id = $1', [user.id]);
+
+        const { rows: fullUserRows } = await db.query('SELECT id, name, phone, email, role, is_locked FROM users WHERE id = $1', [user.id]);
+        if (fullUserRows[0].is_locked) {
+          return res.status(403).json({ ok: false, error: 'Tài khoản đã bị khóa.' });
+        }
+        res.json({ ok: true, user: fullUserRows[0] });
+      } else {
+        res.status(400).json({ ok: false, error: 'Verification failed' });
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
 
   app.post('/api/auth/register-instant', async (req, res) => {
     const { phone, pin } = req.body;

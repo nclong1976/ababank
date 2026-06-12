@@ -19,11 +19,13 @@ import {
 } from 'lucide-react';
 import { auth, db } from '../lib/firebase/config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { startRegistration } from '@simplewebauthn/browser';
 
 interface ProfileOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   user: {
+    id?: string;
     name: string;
     role: string;
     email?: string;
@@ -133,31 +135,27 @@ export default function ProfileOverlay({
           alert('WebAuthn is not supported on this device/browser.');
           return;
         } else {
-          const challenge = new Uint8Array(32);
-          window.crypto.getRandomValues(challenge);
-          
-          const userIdBuf = new Uint8Array(16);
-          window.crypto.getRandomValues(userIdBuf);
-
-          const cred = await navigator.credentials.create({
-            publicKey: {
-              challenge,
-              rp: { name: "ABA Bank", id: window.location.hostname },
-              user: {
-                id: userIdBuf,
-                name: user.name,
-                displayName: user.name
-              },
-              pubKeyCredParams: [{ type: "public-key", alg: -7 }],
-              authenticatorSelection: {
-                authenticatorAttachment: "platform",
-                userVerification: "preferred"
-              },
-              timeout: 60000
-            }
+          const resp = await fetch('/api/auth/webauthn/generate-registration-options', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id })
           });
+          const data = await resp.json();
+          if (!data.ok) throw new Error(data.error || 'Failed to generate options');
 
-          if (cred) {
+          const attResp = await startRegistration({ optionsJSON: data.options });
+
+          const verificationResp = await fetch('/api/auth/webauthn/verify-registration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              response: attResp
+            }),
+          });
+          
+          const verificationJSON = await verificationResp.json();
+          if (verificationJSON.verified) {
             setIsBiometricEnabled(true);
             localStorage.setItem('biometric_enabled', 'true');
             logAction('Biometric Enrollment', 'success');
@@ -166,6 +164,8 @@ export default function ProfileOverlay({
                 await setDoc(doc(db, 'users', auth.currentUser.uid), { biometricEnabled: true }, { merge: true });
               } catch (err) {}
             }
+          } else {
+            throw new Error(verificationJSON.error || 'Verification failed');
           }
         }
       } catch (err) {

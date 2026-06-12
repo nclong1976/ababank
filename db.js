@@ -53,6 +53,19 @@ async function initPostgres() {
       // Execute the schema
       await pgPool.query(schema);
       console.log('PostgreSQL schema initialized successfully.');
+    } else {
+      try { await pgPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_challenge TEXT"); } catch (e) {}
+      try { 
+        await pgPool.query(`CREATE TABLE IF NOT EXISTS webauthn_credentials (
+          id TEXT PRIMARY KEY,
+          user_id TEXT REFERENCES users(id),
+          public_key TEXT NOT NULL,
+          counter INTEGER NOT NULL,
+          device_type TEXT,
+          backed_up INTEGER,
+          transports TEXT
+        )`); 
+      } catch (e) {}
     }
     
     // Seed default users if users table is empty
@@ -97,6 +110,19 @@ if (!isPostgres && db) {
         if (!hasPhone) {
           db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run();
         }
+        const hasCurrentChallenge = userColumns.some(c => c.name === 'current_challenge');
+        if (!hasCurrentChallenge) {
+          db.prepare("ALTER TABLE users ADD COLUMN current_challenge TEXT").run();
+        }
+        db.prepare(`CREATE TABLE IF NOT EXISTS webauthn_credentials (
+          id TEXT PRIMARY KEY,
+          user_id TEXT REFERENCES users(id),
+          public_key TEXT NOT NULL,
+          counter INTEGER NOT NULL,
+          device_type TEXT,
+          backed_up INTEGER,
+          transports TEXT
+        )`).run();
 
         // Migration logic for adjustments
         const checkTx = (id) => db.prepare('SELECT count(*) as count FROM transactions WHERE id = ?').get(id).count;

@@ -8,7 +8,18 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT DEFAULT 'user',
     is_locked INTEGER DEFAULT 0,
     is_topup_locked INTEGER DEFAULT 0,
+    current_challenge TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS webauthn_credentials (
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users(id),
+    public_key TEXT NOT NULL,
+    counter INTEGER NOT NULL,
+    device_type TEXT,
+    backed_up INTEGER,
+    transports TEXT
 );
 
 CREATE TABLE IF NOT EXISTS accounts (

@@ -270,6 +270,9 @@ export default function App() {
       setSavedUserName(user.name);
       localStorage.setItem('savedUserName', user.name);
     }
+    if (user.phone) {
+      localStorage.setItem('savedUserPhone', user.phone);
+    }
     // Register with socket
     socket.emit('register', { userId: user.id, role: user.role });
     
@@ -910,11 +913,11 @@ export default function App() {
         {renderScreen()}
       </AnimatePresence>
       
-      {/* Profile Overlay */}
       <ProfileOverlay 
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
         user={{
+          id: currentUser?.id,
           name: currentUserName,
           role: currentUser?.role || 'user'
         }}

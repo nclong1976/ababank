@@ -2,7 +2,8 @@
   "name": "ABA Mobile",
   "short_name": "ABA",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
   "background_color": "#011a24",
   "theme_color": "#003b4d",
   "icons": [
