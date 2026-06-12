@@ -580,6 +580,8 @@ export default function App() {
             type={historyType} 
             onBack={() => setScreen('home')} 
             currentUserId={currentUserId}
+            currentUserName={currentUserName}
+            currentUserAccountNo={currentUserAccountNo}
           />
         </motion.div>
       );
@@ -731,6 +733,10 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ y: -2 }}
           className="relative bg-white rounded-[1.7rem] p-5 shadow-2xl mb-6 overflow-hidden cursor-pointer"
+          onClick={() => {
+            setHistoryType('receive');
+            setScreen('history');
+          }}
         >
           <div className="relative w-full flex flex-col mb-4">
             <div className="flex items-center justify-between">

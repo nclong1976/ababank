@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { ChevronLeft, ShieldCheck, Filter } from 'lucide-react';
+import { ChevronLeft, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import socket from '../lib/socket';
 import Receipt from './Receipt';
@@ -8,6 +8,8 @@ interface HistoryProps {
   type: 'receive' | 'send';
   onBack: () => void;
   currentUserId: string;
+  currentUserName: string;
+  currentUserAccountNo: string;
 }
 
 interface Transaction {
@@ -22,18 +24,19 @@ interface Transaction {
   balanceAfter?: number;
 }
 
-export default function History({ type, onBack, currentUserId }: HistoryProps) {
+export default function History({ type, onBack, currentUserId, currentUserName, currentUserAccountNo }: HistoryProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [filterCurrency, setFilterCurrency] = useState<'ALL' | 'USD' | 'KHR'>('ALL');
+  const [activeTab, setActiveTab] = useState<'send' | 'receive'>(type);
 
   const fetchTransactions = () => {
     fetch(`/api/user/${currentUserId}/transactions`)
       .then(res => res.json())
       .then(data => {
         if (data.ok && Array.isArray(data.transactions)) {
-          setTransactions(data.transactions.filter((t: any) => t.type === type));
+          setTransactions(data.transactions);
         }
         setLoading(false);
       })
@@ -44,16 +47,22 @@ export default function History({ type, onBack, currentUserId }: HistoryProps) {
   };
 
   useEffect(() => {
+    setActiveTab(type);
+  }, [type]);
+
+  useEffect(() => {
     fetchTransactions();
 
-    socket.on('balance_update', () => {
+    const onBalanceUpdate = () => {
       fetchTransactions();
-    });
+    };
+
+    socket.on('balance_update', onBalanceUpdate);
 
     return () => {
-      socket.off('balance_update');
+      socket.off('balance_update', onBalanceUpdate);
     };
-  }, [type]);
+  }, [currentUserId]);
 
   const formatAmount = (val: number) => {
     return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -67,9 +76,12 @@ export default function History({ type, onBack, currentUserId }: HistoryProps) {
   };
 
   const filteredTransactions = useMemo(() => {
-    if (filterCurrency === 'ALL') return transactions;
-    return transactions.filter(t => t.currency === filterCurrency);
-  }, [transactions, filterCurrency]);
+    let result = transactions.filter(t => t.type === activeTab);
+    if (filterCurrency !== 'ALL') {
+      result = result.filter(t => t.currency === filterCurrency);
+    }
+    return result;
+  }, [transactions, activeTab, filterCurrency]);
 
   return (
     <motion.div 
@@ -83,8 +95,10 @@ export default function History({ type, onBack, currentUserId }: HistoryProps) {
           <Receipt 
             amount={selectedTx.amount.toString()}
             currency={selectedTx.currency as 'USD' | 'KHR'}
-            recipientName={selectedTx.partyName}
-            recipientAccount={selectedTx.partyAccountNo}
+            recipientName={selectedTx.type === 'receive' ? currentUserName : selectedTx.partyName}
+            recipientAccount={selectedTx.type === 'receive' ? currentUserAccountNo : selectedTx.partyAccountNo}
+            senderName={selectedTx.type === 'receive' ? selectedTx.partyName : currentUserName}
+            senderAccount={selectedTx.type === 'receive' ? selectedTx.partyAccountNo : currentUserAccountNo}
             transactionId={selectedTx.id}
             transactionDate={selectedTx.createdAt}
             remainingBalance={selectedTx.balanceAfter}
@@ -95,13 +109,40 @@ export default function History({ type, onBack, currentUserId }: HistoryProps) {
         )}
       </AnimatePresence>
 
-      <header className="flex items-center p-4 pt-10 text-white relative bg-[#005c7a]">
-        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:scale-95 transition-colors z-10">
-          <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
-        </button>
-        <h1 className="text-[17px] font-medium tracking-wide flex-1 text-center absolute inset-0 flex items-center justify-center pt-10 font-sans">
-          {type === 'receive' ? 'Receive History' : 'Send History'}
-        </h1>
+      <header className="flex flex-col p-4 pt-10 pb-2 text-white bg-[#005c7a] shrink-0 font-sans select-none">
+        <div className="flex items-center relative h-10 w-full mb-3">
+          <button onClick={onBack} className="absolute left-0 p-2 -ml-2 rounded-full hover:bg-white/10 active:scale-95 transition-colors z-10">
+            <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
+          </button>
+          <h1 className="text-[19px] font-bold tracking-tight flex-1 text-center font-sans">
+            History
+          </h1>
+        </div>
+        
+        {/* Segmented Control Tabs */}
+        <div className="flex bg-[#004860] p-1 rounded-xl w-full mb-2 relative">
+          <motion.div 
+            className="absolute top-1 bottom-1 bg-[#00bcd4] rounded-lg shadow-md"
+            layoutId="activeTabIndicator"
+            animate={{ 
+              left: activeTab === 'receive' ? '4px' : 'calc(50% + 2px)',
+              right: activeTab === 'receive' ? 'calc(50% + 2px)' : '4px'
+            }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+          />
+          <button
+            onClick={() => setActiveTab('receive')}
+            className={`flex-1 py-2 text-[14px] font-bold text-center z-10 relative transition-colors duration-200 ${activeTab === 'receive' ? 'text-white' : 'text-white/60'}`}
+          >
+            Received
+          </button>
+          <button
+            onClick={() => setActiveTab('send')}
+            className={`flex-1 py-2 text-[14px] font-bold text-center z-10 relative transition-colors duration-200 ${activeTab === 'send' ? 'text-white' : 'text-white/60'}`}
+          >
+            Sent
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 bg-gray-50 rounded-t-3xl overflow-hidden flex flex-col">
@@ -146,8 +187,8 @@ export default function History({ type, onBack, currentUserId }: HistoryProps) {
                 onClick={() => setSelectedTx(t)}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${type === 'receive' ? 'bg-[#e0f2f1]' : 'bg-[#ffebee]'}`}>
-                    {type === 'receive' ? (
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${activeTab === 'receive' ? 'bg-[#e0f2f1]' : 'bg-[#ffebee]'}`}>
+                    {activeTab === 'receive' ? (
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-[#00bcd4]"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
                     ) : (
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-[#ff5252]"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
@@ -164,8 +205,8 @@ export default function History({ type, onBack, currentUserId }: HistoryProps) {
                   </div>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className={`font-black text-[16px] tracking-tight ${type === 'receive' ? 'text-[#007baf]' : 'text-[#ff5252]'}`}>
-                    {type === 'receive' ? '+' : '-'}{t.currency === 'USD' ? '$' : ''}{formatAmount(t.amount)}{t.currency === 'KHR' ? ' ៛' : ''}
+                  <span className={`font-black text-[16px] tracking-tight ${activeTab === 'receive' ? 'text-[#007baf]' : 'text-[#ff5252]'}`}>
+                    {activeTab === 'receive' ? '+' : '-'}{t.currency === 'USD' ? '$' : ''}{formatAmount(t.amount)}{t.currency === 'KHR' ? ' ៛' : ''}
                   </span>
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className={`w-2 h-2 rounded-full ${t.partyName === 'ADMIN TOP UP' ? 'bg-amber-500' : 'bg-green-500'}`}></span>

@@ -44,8 +44,31 @@ export default function Receipt({
   type,
   note
 }: ReceiptProps) {
+  const formatAmountValue = (amt: any, curr: string) => {
+    if (!amt) return '0.00';
+    let amtStr = amt.toString().trim();
+    const cleanedCurr = (curr || 'USD').toUpperCase();
+    amtStr = amtStr
+      .replace(cleanedCurr, '')
+      .replace('$', '')
+      .replace('៛', '')
+      .replace('+', '')
+      .replace('-', '')
+      .trim();
+    
+    const parsed = parseFloat(amtStr);
+    if (isNaN(parsed)) return amt;
+    
+    const formatted = parsed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (cleanedCurr === 'USD') {
+      return `$${formatted}`;
+    } else {
+      return `${formatted} ៛`;
+    }
+  };
+
   const details = transactionDetails || {
-    amount: amount ? `${amount} ${currency || 'USD'}` : '246.00',
+    amount: amount ? formatAmountValue(amount, currency) : '$246.00',
     date: transactionDate ? (typeof transactionDate === 'string' ? transactionDate : new Date(transactionDate).toLocaleDateString('en-US') + ' | ' + new Date(transactionDate).toLocaleTimeString('en-US')) : 'May 11, 2022 | 8:42AM',
     id: transactionId ? transactionId.toString() : '22422068',
     senderName: senderName || 'JOHN DOE',
@@ -58,7 +81,7 @@ export default function Receipt({
   };
 
   const isReceive = type === 'receive';
-  const displayPartyName = isReceive ? details.senderName : details.receiverName;
+  const displayPartyName = (isReceive ? details.senderName : details.receiverName) || 'ABA SYSTEM';
   const displayAmount = details.amount;
 
   return (
