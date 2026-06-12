@@ -3,6 +3,12 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/auth/(.*)", "dest": "/api/index.js" },
+    { "src": "/manifest.json", "dest": "/manifest.json" },
+    { "src": "/sw.js", "dest": "/sw.js" },
+    { "src": "/icon.png", "dest": "/icon.png" },
+    { "src": "/icon-192x192.png", "dest": "/icon-192x192.png" },
+    { "src": "/icon-512x512.png", "dest": "/icon-512x512.png" },
+    { "src": "/apple-touch-icon.png", "dest": "/apple-touch-icon.png" },
     { "src": "/assets/(.*)", "dest": "/assets/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]

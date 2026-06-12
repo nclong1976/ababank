@@ -327,9 +327,8 @@ export default function App() {
   const currentUserId = currentUser?.viewingId || currentUser?.id;
   const [savedUserName, setSavedUserName] = useState(() => localStorage.getItem('savedUserName') || 'So Dawin!');
   const currentUserName = currentUser?.viewingName || currentUser?.name || savedUserName;
-  const currentUserAccountNo = accountNumbers[activeCurrency] || (activeCurrency === 'USD' ? 'USD789632' : 'KHR789632');
-
   const [activeCurrency, setActiveCurrency] = useState<'USD' | 'KHR'>('USD');
+  const currentUserAccountNo = accountNumbers[activeCurrency] || (activeCurrency === 'USD' ? 'USD789632' : 'KHR789632');
   const [displayBalance, setDisplayBalance] = useState(0);
 
   useEffect(() => {
