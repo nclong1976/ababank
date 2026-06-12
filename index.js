@@ -334,7 +334,7 @@ async function initializeApp() {
 
       if (!user.current_challenge) return res.status(400).json({ ok: false, error: 'Challenge not found' });
 
-      const expectedOrigin = req.headers.origin || \`https://\${req.hostname}\`;
+      const expectedOrigin = req.headers.origin || `https://${req.hostname}`;
 
       const verification = await verifyRegistrationResponse({
         response,
@@ -346,10 +346,10 @@ async function initializeApp() {
       if (verification.verified && verification.registrationInfo) {
         const { credentialID, credentialPublicKey, counter, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
         
-        await db.query(\`
+        await db.query(`
           INSERT INTO webauthn_credentials (id, user_id, public_key, counter, device_type, backed_up)
           VALUES ($1, $2, $3, $4, $5, $6)
-        \`, [
+        `, [
           Buffer.from(credentialID).toString('base64url'), 
           userId, 
           Buffer.from(credentialPublicKey).toString('base64url'), 
@@ -412,7 +412,7 @@ async function initializeApp() {
       if (!credRows.length) return res.status(404).json({ ok: false, error: 'Credential not found' });
       const cred = credRows[0];
 
-      const expectedOrigin = req.headers.origin || \`https://\${req.hostname}\`;
+      const expectedOrigin = req.headers.origin || `https://${req.hostname}`;
 
       const verification = await verifyAuthenticationResponse({
         response,
