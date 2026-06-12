@@ -79,8 +79,8 @@ async function initPostgres() {
     const userCount = parseInt(userCountRes.rows[0].count, 10);
     if (userCount === 0) {
       console.log('Seeding default users in PostgreSQL...');
-      await pgPool.query("INSERT INTO users (id, name, email, pin, role) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin')");
-      await pgPool.query("INSERT INTO users (id, name, email, pin, role) VALUES ('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user')");
+      await pgPool.query("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999')");
+      await pgPool.query("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user', '099999991')");
       await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('admin-1', 'USD', 0, '123456789')");
       await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'USD', 6250.75, 'USD789632')");
       await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'KHR', 1500000, 'KHR789632')");
@@ -195,8 +195,8 @@ if (!isPostgres && db) {
       const userCount = db.prepare('SELECT count(*) as count FROM users').get().count;
       if (userCount === 0) {
         console.log('Seeding default users...');
-        db.prepare('INSERT INTO users (id, name, email, pin, role) VALUES (?, ?, ?, ?, ?)').run('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin');
-        db.prepare('INSERT INTO users (id, name, email, pin, role) VALUES (?, ?, ?, ?, ?)').run('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user');
+        db.prepare('INSERT INTO users (id, name, email, pin, role, phone) VALUES (?, ?, ?, ?, ?, ?)').run('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999');
+        db.prepare('INSERT INTO users (id, name, email, pin, role, phone) VALUES (?, ?, ?, ?, ?, ?)').run('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user', '099999991');
         db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('admin-1', 'USD', 0);
         db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'USD', 6250.75);
         db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'KHR', 1500000);
@@ -228,8 +228,8 @@ async function resetDatabase() {
     await pgPool.query(schema);
     
     // Seed default users in PostgreSQL
-    await pgPool.query("INSERT INTO users (id, name, email, pin, role) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin')");
-    await pgPool.query("INSERT INTO users (id, name, email, pin, role) VALUES ('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user')");
+    await pgPool.query("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999')");
+    await pgPool.query("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user', '099999991')");
     await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('admin-1', 'USD', 0, '123456789')");
     await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'USD', 6250.75, 'USD789632')");
     await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'KHR', 1500000, 'KHR789632')");
@@ -242,8 +242,8 @@ async function resetDatabase() {
     db.exec(schema);
     
     // Seed default users in SQLite
-    db.prepare('INSERT INTO users (id, name, email, pin, role) VALUES (?, ?, ?, ?, ?)').run('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin');
-    db.prepare('INSERT INTO users (id, name, email, pin, role) VALUES (?, ?, ?, ?, ?)').run('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user');
+    db.prepare('INSERT INTO users (id, name, email, pin, role, phone) VALUES (?, ?, ?, ?, ?, ?)').run('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999');
+    db.prepare('INSERT INTO users (id, name, email, pin, role, phone) VALUES (?, ?, ?, ?, ?, ?)').run('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user', '099999991');
     db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('admin-1', 'USD', 0);
     db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'USD', 6250.75);
     db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'KHR', 1500000);
