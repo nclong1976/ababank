@@ -582,6 +582,8 @@ export default function App() {
             currentUserId={currentUserId}
             currentUserName={currentUserName}
             currentUserAccountNo={currentUserAccountNo}
+            balances={balances}
+            activeCurrency={activeCurrency}
           />
         </motion.div>
       );
