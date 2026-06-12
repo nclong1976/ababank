@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     user_id TEXT REFERENCES users(id),
     currency VARCHAR(10) DEFAULT 'USD',
     balance DECIMAL(20, 2) DEFAULT 0.00,
+    account_no TEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, currency)
 );

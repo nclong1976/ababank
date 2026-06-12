@@ -1,28 +1,69 @@
-/**
- * FOR FUTURE POSTGRESQL MIGRATION:
- * Remove better-sqlite3 and use pg:
- * 
- * const { Pool } = require('pg');
- * const pool = new Pool({
- *   connectionString: process.env.DATABASE_URL,
- *   ssl: {
- *     rejectUnauthorized: false
- *   }
- * });
- * // ... then update query logic to use pool.query
- */
-
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
 let db;
+let pgPool;
+let isPostgres = false;
 
-const dbPath = path.resolve(__dirname, 'dev.db');
-db = new Database(dbPath);
+const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
-// Initialize schema if needed (Only for SQLite)
-if (db) {
+if (dbUrl) {
+  const { Pool } = require('pg');
+  pgPool = new Pool({
+    connectionString: dbUrl,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  });
+  isPostgres = true;
+  console.log('Database: Using PostgreSQL');
+} else {
+  const dbPath = path.resolve(__dirname, 'dev.db');
+  db = new Database(dbPath);
+  console.log('Database: Using SQLite');
+}
+
+// Function to initialize PostgreSQL tables & seed data
+async function initPostgres() {
+  try {
+    const res = await pgPool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users'
+      )
+    `);
+    if (!res.rows[0].exists) {
+      console.log('Initializing PostgreSQL schema...');
+      const schemaPath = path.resolve(__dirname, 'schema.sql');
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      
+      // Execute the schema
+      await pgPool.query(schema);
+      console.log('PostgreSQL schema initialized successfully.');
+    }
+    
+    // Seed default users if users table is empty
+    const userCountRes = await pgPool.query('SELECT COUNT(*) as count FROM users');
+    const userCount = parseInt(userCountRes.rows[0].count, 10);
+    if (userCount === 0) {
+      console.log('Seeding default users in PostgreSQL...');
+      await pgPool.query("INSERT INTO users (id, name, email, pin, role) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin')");
+      await pgPool.query("INSERT INTO users (id, name, email, pin, role) VALUES ('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user')");
+      await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('admin-1', 'USD', 0, '123456789')");
+      await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'USD', 6250.75, 'USD789632')");
+      await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'KHR', 1500000, 'KHR789632')");
+      await pgPool.query("INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES ('initial-bonus-5000', 'user-1', 5000, 'plus', 1250.75, 6250.75, 'Bonus 5000 USD added by System', 'USD')");
+      console.log('PostgreSQL seed completed.');
+    }
+  } catch (err) {
+    console.error('Error initializing PostgreSQL database:', err);
+  }
+}
+
+// Initialize SQLite schema if active
+if (!isPostgres && db) {
   const schemaPath = path.resolve(__dirname, 'schema.sql');
   if (fs.existsSync(schemaPath)) {
     const schema = fs.readFileSync(schemaPath, 'utf8');
@@ -123,12 +164,66 @@ if (db) {
   }
 }
 
+if (isPostgres) {
+  initPostgres();
+}
+
+/**
+ * Universal Database Reset Function
+ */
+async function resetDatabase() {
+  const schemaPath = path.resolve(__dirname, 'schema.sql');
+  const schema = fs.readFileSync(schemaPath, 'utf8');
+
+  if (isPostgres) {
+    await pgPool.query('DROP TABLE IF EXISTS transactions CASCADE');
+    await pgPool.query('DROP TABLE IF EXISTS accounts CASCADE');
+    await pgPool.query('DROP TABLE IF EXISTS users CASCADE');
+    await pgPool.query(schema);
+    
+    // Seed default users in PostgreSQL
+    await pgPool.query("INSERT INTO users (id, name, email, pin, role) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin')");
+    await pgPool.query("INSERT INTO users (id, name, email, pin, role) VALUES ('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user')");
+    await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('admin-1', 'USD', 0, '123456789')");
+    await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'USD', 6250.75, 'USD789632')");
+    await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'KHR', 1500000, 'KHR789632')");
+    await pgPool.query("INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES ('initial-bonus-5000', 'user-1', 5000, 'plus', 1250.75, 6250.75, 'Bonus 5000 USD added by System', 'USD')");
+  } else {
+    if (!db) throw new Error('Database not initialized');
+    db.exec('PRAGMA foreign_keys = OFF');
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+    tables.forEach(t => db.prepare(`DROP TABLE IF EXISTS ${t.name}`).run());
+    db.exec(schema);
+    
+    // Seed default users in SQLite
+    db.prepare('INSERT INTO users (id, name, email, pin, role) VALUES (?, ?, ?, ?, ?)').run('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin');
+    db.prepare('INSERT INTO users (id, name, email, pin, role) VALUES (?, ?, ?, ?, ?)').run('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user');
+    db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('admin-1', 'USD', 0);
+    db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'USD', 6250.75);
+    db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'KHR', 1500000);
+    db.prepare('INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run('initial-bonus-5000', 'user-1', 5000, 'plus', 1250.75, 6250.75, 'Bonus 5000 USD added by System', 'USD');
+  }
+}
+
 /**
  * Universal Query Adapter
  */
 module.exports = {
   query: async (text, params = []) => {
-    
+    if (isPostgres) {
+      try {
+        const res = await pgPool.query(text, params);
+        return {
+          rows: res.rows,
+          rowCount: res.rowCount
+        };
+      } catch (err) {
+        console.error('SQL PG error:', text, params, err);
+        throw err;
+      }
+    }
+
     if (!db) {
        throw new Error('Database not initialized');
     }
@@ -157,6 +252,23 @@ module.exports = {
     }
   },
   getClient: async () => {
+    if (isPostgres) {
+      const client = await pgPool.connect();
+      return {
+        query: async (text, params = []) => {
+          const res = await client.query(text, params);
+          return {
+            rows: res.rows,
+            rowCount: res.rowCount
+          };
+        },
+        release: () => client.release(),
+        begin: () => client.query('BEGIN'),
+        commit: () => client.query('COMMIT'),
+        rollback: () => client.query('ROLLBACK')
+      };
+    }
+
     // Basic client simulation for SQLite
     return {
       query: async (text, params = []) => {
@@ -172,6 +284,6 @@ module.exports = {
       commit: () => db.prepare('COMMIT').run(),
       rollback: () => db.prepare('ROLLBACK').run()
     };
-  }
+  },
+  resetDatabase
 };
-

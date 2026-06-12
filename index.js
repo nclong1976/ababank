@@ -12,7 +12,9 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { createServer: createViteServer } = require('vite');
 require('dotenv').config();
 
-async function startServer() {
+let io = null;
+
+async function initializeApp() {
   const app = express();
   app.set('trust proxy', 1);
   app.use(cors());
@@ -98,7 +100,7 @@ async function startServer() {
   });
 
   const server = http.createServer(app);
-  const io = socketio(server, {
+  io = socketio(server, {
     cors: { origin: '*' }
   });
 
@@ -122,6 +124,7 @@ async function startServer() {
   });
 
   async function emitBalanceUpdate(userId, transactionRow, newBalance) {
+    if (!io) return;
     const payload = {
       userId,
       transaction: transactionRow,
@@ -551,19 +554,7 @@ async function startServer() {
 
   app.post('/api/admin/reset-db', isAdmin, async (req, res) => {
     try {
-      const fs = require('fs');
-      const schema = fs.readFileSync(path.resolve(__dirname, 'schema.sql'), 'utf8');
-      
-      // Close and reopen for nuking
-      // In better-sqlite3 we can just exec
-      db.exec('PRAGMA foreign_keys = OFF');
-      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
-      tables.forEach(t => db.prepare(`DROP TABLE IF EXISTS ${t.name}`).run());
-      db.exec(schema);
-      
-      // Reseed via the logic in db.js (calling the exported init function if it existed, but it's executed on load)
-      // Since db.js executes on load, I'll just restart the process or re-run seed here logic-wise
-      // But for this environment, let's just send a success and tell user to refresh
+      await db.resetDatabase();
       res.json({ ok: true, message: 'Database reset to schema' });
       
       // Auto-exit so the container restarts and db.js seeds again
@@ -757,10 +748,23 @@ async function startServer() {
     }
   });
 
-  const PORT = 3000;
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log('Server listening on', PORT);
-  });
+  return { app, server };
 }
 
-startServer();
+// For Vercel Serverless Function compatibility
+module.exports = async (req, res) => {
+  const { app } = await initializeApp();
+  return app(req, res);
+};
+
+// Start server locally if run directly
+if (require.main === module) {
+  initializeApp().then(({ server }) => {
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log('Server listening on', PORT);
+    });
+  }).catch(err => {
+    console.error('Failed to start local server:', err);
+  });
+}
