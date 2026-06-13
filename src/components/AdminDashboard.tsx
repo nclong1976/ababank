@@ -44,6 +44,8 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
   const [amount, setAmount] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'KHR'>('USD');
   const [reason, setReason] = useState('Admin cộng tiền');
+  const [senderName, setSenderName] = useState('Nguyen Van A');
+  const [senderAccount, setSenderAccount] = useState('123 456 789');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Filters
@@ -230,7 +232,9 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
           type: adjustType,
           adminId,
           note: reason,
-          currency: selectedCurrency
+          currency: selectedCurrency,
+          partyName: adjustType === 'plus' ? senderName : undefined,
+          partyAccountNo: adjustType === 'plus' ? senderAccount : undefined
         })
       });
 
@@ -414,7 +418,9 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                     onClick={() => {
                       setTargetUser(u);
                       setAdjustType('plus');
-                      setReason('Admin cộng tiền');
+                      setReason('Transfer to ' + (u.accountNumbers?.USD || '...'));
+                      setSenderName('Nguyen Van A');
+                      setSenderAccount('123 456 789');
                       setIsAdjustModalOpen(true);
                       setAmount('');
                     }}
@@ -547,8 +553,30 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                       </div>
                    </div>
 
+                   {adjustType === 'plus' && (
+                     <>
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Tên Người Gửi (Giả lập)</label>
+                          <input 
+                            value={senderName}
+                            onChange={e => setSenderName(e.target.value)}
+                            placeholder="Ví dụ: Nguyen Van A"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold text-gray-300 outline-none transition-all focus:border-[#D4AF37]"
+                          />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">STK Người Gửi (Giả lập)</label>
+                          <input 
+                            value={senderAccount}
+                            onChange={e => setSenderAccount(e.target.value)}
+                            placeholder="Ví dụ: 123 456 789"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold text-gray-300 outline-none transition-all focus:border-[#D4AF37]"
+                          />
+                       </div>
+                     </>
+                   )}
                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Ghi chú</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Ghi chú (Note giao dịch)</label>
                       <input 
                         value={reason}
                         onChange={e => setReason(e.target.value)}

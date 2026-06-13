@@ -503,10 +503,6 @@ async function initializeApp() {
     try {
       let queryText = 'SELECT id, name, email, role, is_locked FROM users WHERE pin = $1';
       const queryParams = [pin];
-      if (name) {
-        queryText += ' AND name = $2';
-        queryParams.push(name);
-      }
       const { rows } = await db.query(queryText, queryParams);
       if (rows.length) {
         if (rows[0].is_locked) {
@@ -804,7 +800,7 @@ async function initializeApp() {
     }
   });
   app.post('/api/admin/adjust', isAdmin, async (req, res) => {
-    const { userId, amount, type, adminId, note, currency = 'USD' } = req.body;
+    const { userId, amount, type, adminId, note, currency = 'USD', partyName, partyAccountNo } = req.body;
 
     if (!userId || !amount || !type) return res.status(400).json({ ok: false, error: 'Missing fields' });
     if (!['plus', 'minus'].includes(type)) return res.status(400).json({ ok: false, error: 'Invalid type' });
@@ -838,20 +834,20 @@ async function initializeApp() {
       // Map to standard UI types: Receive for Plus, Adjustment for Minus (as requested)
       const txType = type === 'plus' ? 'receive' : 'send'; 
       const finalNote = note || `Admin Adjustment (${type === 'plus' ? '+' : '-'})`;
-      const partyName = type === 'plus' ? 'ADMIN TOP UP' : 'ADMIN ADJUSTMENT';
+      const finalPartyName = partyName || (type === 'plus' ? 'ABA SYSTEM' : 'ADMIN ADJUSTMENT');
       
-      let adminAccountNo = '123 456 789'; // Default fallback
-      if (adminId) {
+      let finalPartyAccountNo = partyAccountNo || '123 456 789'; // Default fallback
+      if (!partyAccountNo && adminId) {
         const { rows: adminAccRows } = await db.query('SELECT account_no FROM accounts WHERE user_id = $1', [adminId]);
         if (adminAccRows.length && adminAccRows[0].account_no) {
-          adminAccountNo = adminAccRows[0].account_no;
+          finalPartyAccountNo = adminAccRows[0].account_no;
         }
       }
 
       await db.query(`
         INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, admin_id, note, currency, party_name, party_account_no)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      `, [txId, userId, amt, txType, balanceBefore, balanceAfter, adminId || null, finalNote, currency, partyName, adminAccountNo]);
+      `, [txId, userId, amt, txType, balanceBefore, balanceAfter, adminId || null, finalNote, currency, finalPartyName, finalPartyAccountNo]);
 
       const transactionPayload = {
         id: txId,
