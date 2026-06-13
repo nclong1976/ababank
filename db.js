@@ -96,6 +96,15 @@ if (!isPostgres && db) {
     try {
       db.exec(schema);
 
+      // Seed default users if users table is empty
+      const userCountRes = db.prepare('SELECT COUNT(*) as count FROM users').get();
+      if (userCountRes && userCountRes.count === 0) {
+        console.log('Seeding default users in SQLite...');
+        db.prepare("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999')").run();
+        db.prepare("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('admin-1', 'USD', 0, '123456789')").run();
+        console.log('SQLite seed completed.');
+      }
+
       // Migration for existing tables
       try {
         const userColumns = db.prepare('PRAGMA table_info(users)').all();
