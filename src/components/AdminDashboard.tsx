@@ -44,9 +44,25 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
   const [amount, setAmount] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'KHR'>('USD');
   const [reason, setReason] = useState('Admin cộng tiền');
-  const [senderName, setSenderName] = useState('Nguyen Van A');
+  const [senderName, setSenderName] = useState('Sok Samnang');
   const [senderAccount, setSenderAccount] = useState('123 456 789');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Helper: Sinh ngẫu nhiên tên người Campuchia và STK
+  const cambodianNames = [
+    "Sok Samnang", "Chea Vanna", "Meas Sophea", "Chan Rithy", "Keo Srey", 
+    "Phan Sothea", "Ratha Lim", "Sovannara Chea", "Vireak Bun", "Dara Noun", 
+    "Sopheap Ouk", "Piseth Chhorn", "Bopha Khem", "Chanthou Prak", "Kosal Yim", 
+    "Sokha Seng", "Nareth Nguon", "Thida Mao", "Sophea Yin", "Rithy Heng", 
+    "Vannak Seng", "Panha Heng", "Socheata Oum", "Nita Lim", "Samnang Chea",
+    "Sreymao Sok", "Chhay Yim", "Chhun Pheng", "Dararith Sok", "Khemera Meas"
+  ];
+  
+  const generateRandomSender = () => {
+    const name = cambodianNames[Math.floor(Math.random() * cambodianNames.length)];
+    const acc = `${Math.floor(100 + Math.random() * 900)} ${Math.floor(100 + Math.random() * 900)} ${Math.floor(100 + Math.random() * 900)}`;
+    return { name, acc };
+  };
 
   // Filters
   const [filterAccount, setFilterAccount] = useState('');
@@ -416,11 +432,12 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                    <button 
                     disabled={u.is_topup_locked}
                     onClick={() => {
+                      const randomSender = generateRandomSender();
                       setTargetUser(u);
                       setAdjustType('plus');
                       setReason('Transfer to ' + (u.accountNumbers?.USD || '...'));
-                      setSenderName('Nguyen Van A');
-                      setSenderAccount('123 456 789');
+                      setSenderName(randomSender.name);
+                      setSenderAccount(randomSender.acc);
                       setIsAdjustModalOpen(true);
                       setAmount('');
                     }}
@@ -555,12 +572,24 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
 
                    {adjustType === 'plus' && (
                      <>
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Tên Người Gửi (Giả lập)</label>
+                       <div className="space-y-2 relative">
+                          <div className="flex justify-between items-center pr-1">
+                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Tên Người Gửi (Giả lập)</label>
+                             <button 
+                               onClick={() => {
+                                  const r = generateRandomSender();
+                                  setSenderName(r.name);
+                                  setSenderAccount(r.acc);
+                               }}
+                               className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-widest hover:underline"
+                             >
+                                ĐỔI NGƯỜI KHÁC
+                             </button>
+                          </div>
                           <input 
                             value={senderName}
                             onChange={e => setSenderName(e.target.value)}
-                            placeholder="Ví dụ: Nguyen Van A"
+                            placeholder="Ví dụ: Sok Samnang"
                             className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold text-gray-300 outline-none transition-all focus:border-[#D4AF37]"
                           />
                        </div>

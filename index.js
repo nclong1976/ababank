@@ -834,13 +834,30 @@ async function initializeApp() {
       // Map to standard UI types: Receive for Plus, Adjustment for Minus (as requested)
       const txType = type === 'plus' ? 'receive' : 'send'; 
       const finalNote = note || `Admin Adjustment (${type === 'plus' ? '+' : '-'})`;
-      const finalPartyName = partyName || (type === 'plus' ? 'ABA SYSTEM' : 'ADMIN ADJUSTMENT');
       
-      let finalPartyAccountNo = partyAccountNo || '123 456 789'; // Default fallback
-      if (!partyAccountNo && adminId) {
-        const { rows: adminAccRows } = await db.query('SELECT account_no FROM accounts WHERE user_id = $1', [adminId]);
-        if (adminAccRows.length && adminAccRows[0].account_no) {
-          finalPartyAccountNo = adminAccRows[0].account_no;
+      let finalPartyName = partyName;
+      if (type === 'plus') {
+        if (!finalPartyName || finalPartyName === 'ABA SYSTEM') {
+          finalPartyName = CAMBODIAN_NAMES[Math.floor(Math.random() * CAMBODIAN_NAMES.length)];
+        }
+      } else {
+        if (!finalPartyName) {
+          finalPartyName = 'ADMIN ADJUSTMENT';
+        }
+      }
+
+      let finalPartyAccountNo = partyAccountNo;
+      if (type === 'plus') {
+        if (!finalPartyAccountNo || finalPartyAccountNo === '123 456 789') {
+          finalPartyAccountNo = `${Math.floor(100 + Math.random() * 900)} ${Math.floor(100 + Math.random() * 900)} ${Math.floor(100 + Math.random() * 900)}`;
+        }
+      } else if (!finalPartyAccountNo) {
+        finalPartyAccountNo = '123 456 789'; // Default fallback
+        if (adminId) {
+          const { rows: adminAccRows } = await db.query('SELECT account_no FROM accounts WHERE user_id = $1', [adminId]);
+          if (adminAccRows.length && adminAccRows[0].account_no) {
+            finalPartyAccountNo = adminAccRows[0].account_no;
+          }
         }
       }
 
@@ -935,9 +952,17 @@ async function initializeApp() {
   return { app, server };
 }
 
+let cachedApp = null;
+async function getApp() {
+  if (cachedApp) return cachedApp;
+  const { app } = await initializeApp();
+  cachedApp = app;
+  return app;
+}
+
 // For Vercel Serverless Function compatibility
 module.exports = async (req, res) => {
-  const { app } = await initializeApp();
+  const app = await getApp();
   return app(req, res);
 };
 

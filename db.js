@@ -235,6 +235,18 @@ async function resetDatabase() {
   }
 }
 
+function prepareSqlAndParams(text, params = []) {
+  let sqliteParams = [];
+  const placeholderRegex = /\$(\d+)/g;
+  let sql = text.replace(placeholderRegex, (m, numStr) => {
+    const idx = parseInt(numStr, 10) - 1;
+    sqliteParams.push(params[idx]);
+    return '?';
+  });
+  sql = sql.replace(/now\(\)/gi, 'CURRENT_TIMESTAMP');
+  return { sql, sqliteParams };
+}
+
 /**
  * Universal Query Adapter
  */
@@ -257,25 +269,25 @@ module.exports = {
        throw new Error('Database not initialized');
     }
 
-    let sql = text.replace(/\$(\d+)/g, '?').replace(/now\(\)/gi, 'CURRENT_TIMESTAMP');
+    const { sql, sqliteParams } = prepareSqlAndParams(text, params);
     
     if (sql.trim().toUpperCase().startsWith('SELECT')) {
       try {
-        const rows = db.prepare(sql).all(params);
+        const rows = db.prepare(sql).all(sqliteParams);
         return { rows };
       } catch (err) {
-        console.error('SQL SELECT error:', sql, params, err);
+        console.error('SQL SELECT error:', sql, sqliteParams, err);
         throw err;
       }
     } else {
       try {
-        const result = db.prepare(sql).run(params);
+        const result = db.prepare(sql).run(sqliteParams);
         return { 
           rows: result.changes > 0 ? [{ id: result.lastInsertRowid }] : [],
           rowCount: result.changes
         };
       } catch (err) {
-        console.error('SQL EXEC error:', sql, params, err);
+        console.error('SQL EXEC error:', sql, sqliteParams, err);
         throw err;
       }
     }
@@ -301,11 +313,11 @@ module.exports = {
     // Basic client simulation for SQLite
     return {
       query: async (text, params = []) => {
-        let sql = text.replace(/\$(\d+)/g, '?').replace(/now\(\)/gi, 'CURRENT_TIMESTAMP');
+        const { sql, sqliteParams } = prepareSqlAndParams(text, params);
         if (sql.trim().toUpperCase().startsWith('SELECT')) {
-           return { rows: db.prepare(sql).all(params) };
+           return { rows: db.prepare(sql).all(sqliteParams) };
         }
-        const result = db.prepare(sql).run(params);
+        const result = db.prepare(sql).run(sqliteParams);
         return { rows: [{ id: result.lastInsertRowid }], rowCount: result.changes };
       },
       release: () => {},
