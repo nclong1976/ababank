@@ -10,9 +10,9 @@ const IMAGES = [
 ];
 
 module.exports = async function handler(req, res) {
-  // Cho phep ca GET va POST, kiem tra secret trong header hoac query
   const secret = req.headers['x-upload-secret'] || req.query.secret;
   if (secret !== process.env.UPLOAD_SECRET) return res.status(401).json({ error: 'Unauthorized' });
+  const token = process.env.ASSETS_READ_WRITE_TOKEN;
   const results = {};
   const errors = [];
   for (const image of IMAGES) {
@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
       const response = await fetch(image.url);
       if (!response.ok) throw new Error('Failed to fetch ' + image.url);
       const buffer = await response.arrayBuffer();
-      const blob = await put(image.name, buffer, { access: 'public', contentType: 'image/png', addRandomSuffix: false });
+      const blob = await put(image.name, buffer, { access: 'public', contentType: 'image/png', addRandomSuffix: false, token });
       results[image.name] = blob.url;
     } catch (err) {
       errors.push({ name: image.name, error: err.message });
