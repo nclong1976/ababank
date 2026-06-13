@@ -80,11 +80,7 @@ async function initPostgres() {
     if (userCount === 0) {
       console.log('Seeding default users in PostgreSQL...');
       await pgPool.query("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999')");
-      await pgPool.query("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user', '099999991')");
-      await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('admin-1', 'USD', 0, '123456789')");
-      await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'USD', 6250.75, 'USD789632')");
-      await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'KHR', 1500000, 'KHR789632')");
-      await pgPool.query("INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES ('initial-bonus-5000', 'user-1', 5000, 'plus', 1250.75, 6250.75, 'Bonus 5000 USD added by System', 'USD')");
+
       console.log('PostgreSQL seed completed.');
     }
   } catch (err) {
@@ -133,20 +129,7 @@ if (!isPostgres && db) {
         // Migration logic for adjustments
         const checkTx = (id) => db.prepare('SELECT count(*) as count FROM transactions WHERE id = ?').get(id).count;
 
-        if (checkTx('request-update-5468-v2') === 0) {
-          const user = db.prepare('SELECT id FROM users WHERE id = ?').get('user-1');
-          if (user) {
-            const account = db.prepare('SELECT balance FROM accounts WHERE user_id = ? AND currency = ?').get('user-1', 'USD');
-            if (account) {
-              const balanceBefore = parseFloat(account.balance);
-              const balanceAfter = 5468.83;
-              db.prepare('UPDATE accounts SET balance = ? WHERE user_id = ? AND currency = ?').run(balanceAfter, 'user-1', 'USD');
-              db.prepare('UPDATE users SET pin = ?, name = ? WHERE id = ?').run('111111', 'So Dawin!', 'user-1');
-              db.prepare('INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-                .run('request-update-5468-v2', 'user-1', balanceAfter - balanceBefore, 'plus', balanceBefore, balanceAfter, 'Balance adjusted to 5,468.83 USD', 'USD');
-            }
-          }
-        }
+
         
         if (checkTx('admin-pin-update-8213') === 0) {
           db.prepare("UPDATE users SET pin = ? WHERE role = 'admin'").run('8213');
@@ -191,33 +174,19 @@ if (!isPostgres && db) {
 
         if (checkTx('phone-and-pin-enforcement-v2') === 0) {
           db.prepare("UPDATE users SET phone = '099999999', pin = '8213' WHERE id = 'admin-1'").run();
-          db.prepare("UPDATE users SET phone = '099999991', pin = '1111', name = 'So Dawin!' WHERE id = 'user-1'").run();
           db.prepare("UPDATE accounts SET account_no = '123456789' WHERE user_id = 'admin-1'").run();
-          db.prepare("UPDATE accounts SET account_no = 'USD789632' WHERE user_id = 'user-1' AND currency = 'USD'").run();
-          db.prepare("UPDATE accounts SET account_no = 'KHR789632' WHERE user_id = 'user-1' AND currency = 'KHR'").run();
           
           const firstUser = db.prepare('SELECT id FROM users LIMIT 1').get();
           if (firstUser) {
             db.prepare('INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-                  .run('phone-and-pin-enforcement-v2', firstUser.id, 0, 'plus', 0, 0, 'Enforced phone and pin seeds for admin and user-1', 'USD');
+                  .run('phone-and-pin-enforcement-v2', firstUser.id, 0, 'plus', 0, 0, 'Enforced phone and pin seeds for admin', 'USD');
           }
         }
       } catch (err) {
         console.error('Migration error:', err);
       }
       
-      const userCount = db.prepare('SELECT count(*) as count FROM users').get().count;
-      if (userCount === 0) {
-        console.log('Seeding default users...');
-        db.prepare('INSERT INTO users (id, name, email, pin, role, phone) VALUES (?, ?, ?, ?, ?, ?)').run('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999');
-        db.prepare('INSERT INTO users (id, name, email, pin, role, phone) VALUES (?, ?, ?, ?, ?, ?)').run('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user', '099999991');
-        db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('admin-1', 'USD', 0);
-        db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'USD', 6250.75);
-        db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'KHR', 1500000);
-        db.prepare('INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-          .run('initial-bonus-5000', 'user-1', 5000, 'plus', 1250.75, 6250.75, 'Bonus 5000 USD added by System', 'USD');
-        console.log('Seed completed.');
-      }
+
     } catch (err) {
       console.error('Database initialization error:', err);
     }
@@ -243,11 +212,7 @@ async function resetDatabase() {
     
     // Seed default users in PostgreSQL
     await pgPool.query("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999')");
-    await pgPool.query("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user', '099999991')");
     await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('admin-1', 'USD', 0, '123456789')");
-    await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'USD', 6250.75, 'USD789632')");
-    await pgPool.query("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('user-1', 'KHR', 1500000, 'KHR789632')");
-    await pgPool.query("INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES ('initial-bonus-5000', 'user-1', 5000, 'plus', 1250.75, 6250.75, 'Bonus 5000 USD added by System', 'USD')");
   } else {
     if (!db) throw new Error('Database not initialized');
     db.exec('PRAGMA foreign_keys = OFF');
@@ -257,12 +222,7 @@ async function resetDatabase() {
     
     // Seed default users in SQLite
     db.prepare('INSERT INTO users (id, name, email, pin, role, phone) VALUES (?, ?, ?, ?, ?, ?)').run('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999');
-    db.prepare('INSERT INTO users (id, name, email, pin, role, phone) VALUES (?, ?, ?, ?, ?, ?)').run('user-1', 'So Dawin!', 'nclong1976@gmail.com', '1111', 'user', '099999991');
     db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('admin-1', 'USD', 0);
-    db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'USD', 6250.75);
-    db.prepare('INSERT INTO accounts (user_id, currency, balance) VALUES (?, ?, ?)').run('user-1', 'KHR', 1500000);
-    db.prepare('INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .run('initial-bonus-5000', 'user-1', 5000, 'plus', 1250.75, 6250.75, 'Bonus 5000 USD added by System', 'USD');
   }
 }
 

@@ -711,10 +711,13 @@ async function initializeApp() {
       const userQ = 'INSERT INTO users (id, name, email) VALUES ($1, $2, $3)';
       await client.query(userQ, [userId, name, email]);
       
-      const accQ = 'INSERT INTO accounts (user_id, balance) VALUES ($1, 0)';
-      await client.query(accQ, [userId]);
+      await client.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [userId, 'USD', 0, 'USD' + Date.now()]);
+      await client.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [userId, 'KHR', 0, 'KHR' + Date.now()]);
       
       await client.query('COMMIT');
+      if (io) {
+        io.to('admin').emit('new_user_registered', { userId });
+      }
       res.json({ ok: true, userId });
     } catch (err) {
       await client.query('ROLLBACK');
