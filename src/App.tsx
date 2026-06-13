@@ -114,7 +114,7 @@ import ECashHub from './components/ECashHub';
 import UsefulHub from './components/UsefulHub';
 import Receipt from './components/Receipt';
 import ProfileDetailScreen from './components/ProfileDetailScreen';
-import scanQrIcon from './assets/images/regenerated_image_1781188262145.png';
+import { BLOB_IMAGES } from './lib/blob-images';
 
 const HapticButton = ({ children, onClick, className, ...props }: any) => {
   const [ripples, setRipples] = useState<{x: number, y: number, id: number}[]>([]);
@@ -724,7 +724,7 @@ export default function App() {
               }} 
               className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-lg border border-white/10 overflow-hidden p-1.5"
             >
-              <img src={scanQrIcon} alt="Scan QR" className="w-full h-full object-contain" />
+              <img src={BLOB_IMAGES.scanQrIcon} alt="Scan QR" className="w-full h-full object-contain" />
             </HapticButton>
           </div>
         </header>
