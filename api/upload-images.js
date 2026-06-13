@@ -10,8 +10,8 @@ const IMAGES = [
 ];
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const secret = req.headers['x-upload-secret'];
+  // Cho phep ca GET va POST, kiem tra secret trong header hoac query
+  const secret = req.headers['x-upload-secret'] || req.query.secret;
   if (secret !== process.env.UPLOAD_SECRET) return res.status(401).json({ error: 'Unauthorized' });
   const results = {};
   const errors = [];
