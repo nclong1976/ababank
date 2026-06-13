@@ -9,6 +9,7 @@
     }
   },
   "routes": [
+    { "src": "/api/upload-images", "dest": "/api/upload-images.js" },
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/auth/(.*)", "dest": "/api/index.js" },
     { "src": "/manifest.json", "dest": "/manifest.json" },
