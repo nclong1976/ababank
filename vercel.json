@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": "schema.sql"
+      "includeFiles": "*(schema.sql|dev.db)"
     },
     "api/upload-images.js": {
       "maxDuration": 30

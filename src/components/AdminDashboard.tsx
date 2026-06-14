@@ -36,6 +36,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
   const [masterLog, setMasterLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(true);
   
   // Adjustment Form
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
@@ -76,6 +77,8 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
       if (data.ok) setUsers(data.users);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -344,7 +347,41 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
               </button>
             </div>
 
-            {filteredUsers.map(u => (
+            {loadingUsers ? (
+              <>
+                <div className="bg-[#121212] border border-gray-800 rounded-2xl p-5 h-[212px] w-full animate-pulse flex flex-col gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-white/5" />
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="h-4 bg-white/5 rounded w-1/3" />
+                      <div className="h-3 bg-white/5 rounded w-1/4" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 flex-1">
+                    <div className="bg-black/30 rounded-xl p-3 border border-gray-800" />
+                    <div className="bg-black/30 rounded-xl p-3 border border-gray-800" />
+                  </div>
+                </div>
+                <div className="bg-[#121212] border border-gray-800 rounded-2xl p-5 h-[212px] w-full animate-pulse flex flex-col gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-white/5" />
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="h-4 bg-white/5 rounded w-1/3" />
+                      <div className="h-3 bg-white/5 rounded w-1/4" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 flex-1">
+                    <div className="bg-black/30 rounded-xl p-3 border border-gray-800" />
+                    <div className="bg-black/30 rounded-xl p-3 border border-gray-800" />
+                  </div>
+                </div>
+              </>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-center py-10 opacity-50 flex flex-col items-center gap-2">
+                 <Ghost className="w-8 h-8 text-[#D4AF37] animate-bounce" />
+                 <span className="text-xs uppercase tracking-widest font-black">Empty Members</span>
+              </div>
+            ) : filteredUsers.map(u => (
               <motion.div 
                 key={u.id}
                 layout

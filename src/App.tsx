@@ -81,13 +81,13 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
         <h1 className="text-white font-black text-2xl tracking-[0.2em] italic mb-1">ABA MOBILE</h1>
         <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest px-8 max-w-[280px]">Partnership for better service</p>
       </motion.div>
-      <div className="mt-20 flex gap-1">
+      <div className="mt-20 flex gap-1 h-9 items-center justify-center">
         {[0, 1, 2].map(i => (
           <motion.div
             key={i}
             animate={{ scaleY: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
             transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-            className="w-1.5 h-6 bg-[#00bcd4] rounded-full"
+            className="w-1.5 h-6 bg-[#00bcd4] rounded-full origin-center"
           />
         ))}
       </div>
