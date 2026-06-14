@@ -1,3 +1,4 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
