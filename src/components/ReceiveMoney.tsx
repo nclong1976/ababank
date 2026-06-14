@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Share2, Download, Copy, Check, DollarSign, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { generateKHQRString } from '../lib/khqr';
+import StatusBar from './StatusBar';
 
 interface ReceiveMoneyProps {
   onBack: () => void;
@@ -75,8 +76,9 @@ export default function ReceiveMoney({ onBack, userName, accountNo, language, us
 
   return (
     <div className="min-h-screen bg-[#011a24] flex flex-col font-sans">
+      <StatusBar className="bg-[#011a24]" />
       {/* Header */}
-      <header className="p-4 flex items-center justify-between safe-padding-top">
+      <header className="p-4 pt-2 flex items-center justify-between">
         <button onClick={onBack} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -246,7 +248,7 @@ export default function ReceiveMoney({ onBack, userName, accountNo, language, us
                 >
                   <div className="flex flex-col">
                     <span className="text-white font-bold text-sm tracking-tight">Received from Admin</span>
-                    <span className="text-white/40 text-[10px] font-medium">{new Date(t.createdAt).toLocaleDateString()}</span>
+                    <span className="text-white/40 text-[10px] font-medium">{new Date(t.createdAt).toLocaleDateString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })}</span>
                     {t.note && <span className="text-[#00bcd4] text-[10px] font-bold mt-1 italic">"{t.note}"</span>}
                   </div>
                   <div className="text-right">

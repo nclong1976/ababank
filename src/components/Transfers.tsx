@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, QrCode, Fingerprint } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import StatusBar from './StatusBar';
 
 interface TransfersProps {
   onBack: () => void;
@@ -104,8 +105,9 @@ export default function Transfers({ onBack, onScanQR, onShowReceipt, currentUser
           </motion.div>
         )}
       </AnimatePresence>
+      <StatusBar className="bg-[#005977]" />
 
-      <header className="flex items-center p-4 text-white relative safe-padding-top">
+      <header className="flex items-center p-4 pt-2 text-white relative">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:scale-95 transition-colors z-10">
           <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
         </button>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Check } from 'lucide-react';
+import StatusBar from './StatusBar';
 
 interface ReceiptProps {
   onBack: () => void;
@@ -67,9 +68,34 @@ export default function Receipt({
     }
   };
 
+  const formatToVNDateTime = (dateInput: any) => {
+    if (!dateInput) return 'May 11, 2022 | 8:42AM';
+    try {
+      const date = new Date(dateInput);
+      if (isNaN(date.getTime())) {
+        return String(dateInput);
+      }
+      const dateStr = date.toLocaleDateString('en-US', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      const timeStr = date.toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }).replace(' ', ''); // standard "8:42AM" format
+      return `${dateStr} | ${timeStr}`;
+    } catch (e) {
+      return String(dateInput);
+    }
+  };
+
   const details = transactionDetails || {
     amount: amount ? formatAmountValue(amount, currency) : '$246.00',
-    date: transactionDate ? (typeof transactionDate === 'string' ? transactionDate : new Date(transactionDate).toLocaleDateString('en-US') + ' | ' + new Date(transactionDate).toLocaleTimeString('en-US')) : 'May 11, 2022 | 8:42AM',
+    date: formatToVNDateTime(transactionDate),
     id: transactionId ? transactionId.toString() : '22422068',
     senderName: senderName || 'JOHN DOE',
     senderAccount: senderAccount || 'Payroll Account (001 726 280)',
@@ -92,7 +118,8 @@ export default function Receipt({
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
       className="fixed inset-0 z-50 bg-[#005370] flex flex-col font-sans overflow-hidden"
     >
-      <div className="flex-1 flex flex-col items-center justify-start pt-20 px-5">
+      <StatusBar className="bg-[#005370]" />
+      <div className="flex-1 flex flex-col items-center justify-start pt-10 px-5">
         {/* Success Icon */}
         <div className="w-[72px] h-[72px] bg-[#7CB342] rounded-full flex items-center justify-center mb-4">
           <Check className="w-10 h-10 text-white" strokeWidth={4} />

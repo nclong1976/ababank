@@ -255,7 +255,7 @@ async function initializeApp() {
       // SQLite CURRENT_TIMESTAMP is in "YYYY-MM-DD HH:MM:SS" format (UTC)
       // Convert to ISO format by adding T and Z
       const dbTime = txRows.length > 0 ? txRows[0].created_at : '';
-      const actualCreatedAt = dbTime ? dbTime.replace(' ', 'T') + 'Z' : new Date().toISOString();
+      const actualCreatedAt = dbTime ? (typeof dbTime === 'string' ? dbTime.replace(' ', 'T') + 'Z' : dbTime.toISOString()) : new Date().toISOString();
 
       await client.query('COMMIT');
       
@@ -578,7 +578,7 @@ async function initializeApp() {
 
     try {
       let q = `
-        SELECT t.id, t.created_at, t.amount, t.type, t.balance_before, t.balance_after, t.note, t.currency, u.name as user_name, u.email as user_email
+        SELECT t.id, t.user_id, t.created_at, t.amount, t.type, t.balance_before, t.balance_after, t.note, t.currency, t.party_name, t.party_account_no, u.name as user_name, u.email as user_email
         FROM transactions t
         JOIN users u ON t.user_id = u.id
       `;
@@ -591,7 +591,22 @@ async function initializeApp() {
       params.push(limit, offset);
 
       const { rows } = await db.query(q, params);
-      res.json({ ok: true, transactions: rows });
+      const transformed = rows.map(r => {
+        let currency = r.currency || 'USD';
+        return {
+          id: r.id,
+          userId: r.user_name || r.user_id,
+          amount: Math.abs(parseFloat(r.amount)),
+          type: r.type,
+          balanceBefore: parseFloat(r.balance_before),
+          balanceAfter: parseFloat(r.balance_after),
+          note: r.note,
+          currency: currency,
+          counterparty: r.party_name || (r.type === 'minus' ? 'RECIPIENT' : 'ABA SYSTEM'),
+          createdAt: r.created_at ? (typeof r.created_at === 'string' ? r.created_at.replace(' ', 'T') + 'Z' : r.created_at.toISOString()) : new Date().toISOString()
+        };
+      });
+      res.json({ ok: true, transactions: transformed });
     } catch (err) {
       console.error(err);
       res.status(500).json({ ok: false, error: 'Server error' });
@@ -911,7 +926,7 @@ async function initializeApp() {
            currency: currency,
            partyName: r.party_name || (r.type === 'minus' ? 'RECIPIENT' : 'ABA SYSTEM'),
            partyAccountNo: r.party_account_no || '000 000 000',
-           createdAt: r.created_at ? r.created_at.replace(' ', 'T') + 'Z' : new Date().toISOString(),
+           createdAt: r.created_at ? (typeof r.created_at === 'string' ? r.created_at.replace(' ', 'T') + 'Z' : r.created_at.toISOString()) : new Date().toISOString(),
            note: r.note,
            balanceAfter: parseFloat(r.balance_after)
          };

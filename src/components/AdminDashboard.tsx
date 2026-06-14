@@ -529,7 +529,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                   <div key={t.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2">
                     <div className="flex justify-between items-start">
                       <div className="flex flex-col">
-                        <span className="text-xs text-gray-500">{t.timestamp?.toDate ? t.timestamp.toDate().toLocaleString() : '...'}</span>
+                        <span className="text-xs text-gray-500">{t.createdAt ? new Date(t.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }) : '...'}</span>
                         <span className="font-bold text-[#00bcd4]">User: {t.userId}</span>
                         <span className="text-[10px] text-gray-500 font-mono italic">{t.id}</span>
                       </div>

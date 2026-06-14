@@ -9,6 +9,7 @@ import {
   Fingerprint
 } from 'lucide-react';
 import Receipt from './Receipt';
+import StatusBar from './StatusBar';
 import { parseKHQR } from '../lib/khqr';
 import { db } from '../lib/firebase/config';
 import { collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
@@ -250,6 +251,7 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
 
   return (
     <div className="min-h-screen bg-[#014151] flex flex-col font-sans select-none overflow-hidden text-white relative">
+      <StatusBar className="bg-[#014151]" />
       <AnimatePresence>
         {showBiometricPrompt && (
           <motion.div 
@@ -296,7 +298,7 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
       <div className="absolute top-[-50px] right-[-50px] w-60 h-60 rounded-full border-[20px] border-white/5 pointer-events-none" />
 
       {/* Header */}
-      <header className="p-4 flex items-center justify-between z-10 safe-padding-top">
+      <header className="p-4 pt-2 flex items-center justify-between z-10">
         <button onClick={step === 'pin' ? () => setStep('input') : onBack} className="p-2 transition-transform active:scale-90">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-7 h-7">
             <path d="M15 18l-6-6 6-6" />

@@ -3,6 +3,7 @@ import { ChevronLeft, CircleUser, Scan, MoreHorizontal, ChevronDown, Info } from
 import { motion, AnimatePresence } from 'motion/react';
 import socket from '../lib/socket';
 import Receipt from './Receipt';
+import StatusBar from './StatusBar';
 
 interface HistoryProps {
   type: 'receive' | 'send';
@@ -88,10 +89,16 @@ export default function History({
   };
 
   const getCurrentFormattedDate = () => {
-    const d = new Date();
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    const parts = formatter.formatToParts(new Date());
+    const day = parts.find(p => p.type === 'day')?.value || '01';
+    const month = parts.find(p => p.type === 'month')?.value || '01';
+    const year = parts.find(p => p.type === 'year')?.value || '2026';
     return `${day}.${month}.${year}`;
   };
 
@@ -103,21 +110,25 @@ export default function History({
     const groups: GroupedTransactions[] = [];
     const map: { [key: string]: number } = {};
     
+    const getVNFormatDate = (d: Date) => {
+      return d.toLocaleDateString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' });
+    };
+
     filtered.forEach(tx => {
-      const date = new Date(tx.createdAt);
-      const today = new Date();
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
+      const txDate = new Date(tx.createdAt);
+      const txDateStr = getVNFormatDate(txDate);
+      const todayStr = getVNFormatDate(new Date());
+      const yesterdayStr = getVNFormatDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
       
       let dateKey = '';
-      if (date.toDateString() === today.toDateString()) {
+      if (txDateStr === todayStr) {
         dateKey = 'TODAY';
-      } else if (date.toDateString() === yesterday.toDateString()) {
+      } else if (txDateStr === yesterdayStr) {
         dateKey = 'YESTERDAY';
       } else {
-        const day = date.getDate();
-        const month = date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
-        const year = date.getFullYear();
+        const day = txDate.toLocaleDateString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric' });
+        const month = txDate.toLocaleDateString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', month: 'short' }).toUpperCase();
+        const year = txDate.toLocaleDateString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric' });
         dateKey = `${day} ${month} ${year}`;
       }
       
@@ -139,6 +150,7 @@ export default function History({
       exit={{ opacity: 0, x: '100%' }}
       className="fixed inset-0 z-50 bg-[#011e29] flex flex-col font-sans overflow-hidden"
     >
+      <StatusBar className="bg-[#011e29]" />
       <AnimatePresence>
         {selectedTx && (
           <Receipt 
@@ -159,7 +171,7 @@ export default function History({
       </AnimatePresence>
 
       {/* Header */}
-      <header className="flex items-center justify-between p-4 pt-10 text-white bg-[#011e29] shrink-0 select-none">
+      <header className="flex items-center justify-between p-4 pt-2 text-white bg-[#011e29] shrink-0 select-none">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:scale-95 transition-colors">
             <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />

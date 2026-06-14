@@ -19,6 +19,7 @@ import { AppProvider } from './context/AppContext';
 import { auth, db } from './lib/firebase/config';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import StatusBar from './components/StatusBar';
 
 // Custom icons to match ABA design more closely
 const CardsIcon = () => (
@@ -640,11 +641,13 @@ export default function App() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="min-h-screen bg-linear-to-b from-[#005c7a] via-[#003b4d] to-[#011a24] p-4 pb-20 max-w-md mx-auto relative overflow-hidden font-sans safe-padding-top"
+        className="min-h-screen bg-linear-to-b from-[#005c7a] via-[#003b4d] to-[#011a24] px-0 pt-0 pb-20 max-w-md mx-auto relative overflow-hidden font-sans"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        <StatusBar className="bg-[#005c7a]" />
+        <div className="px-4">
         {/* Pull to refresh indicator */}
         <motion.div 
           className="absolute left-0 right-0 top-0 flex justify-center z-50 pointer-events-none"
@@ -913,6 +916,7 @@ export default function App() {
               </span>
             </HapticButton>
           ))}
+        </div>
         </div>
         </motion.div>
       </motion.div>
