@@ -917,8 +917,8 @@ export default function App() {
             </HapticButton>
           ))}
         </div>
-        </div>
         </motion.div>
+        </div>
       </motion.div>
     );
   };
