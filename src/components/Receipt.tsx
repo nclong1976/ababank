@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Check } from 'lucide-react';
 import StatusBar from './StatusBar';
 
 interface ReceiptProps {
@@ -41,74 +40,80 @@ export default function Receipt({
   senderAccount,
   transactionId,
   transactionDate,
-  remainingBalance,
   type,
   note
 }: ReceiptProps) {
-  const formatAmountValue = (amt: any, curr: string) => {
-    if (!amt) return '0.00';
-    let amtStr = amt.toString().trim();
-    const cleanedCurr = (curr || 'USD').toUpperCase();
-    amtStr = amtStr
-      .replace(cleanedCurr, '')
-      .replace('$', '')
-      .replace('៛', '')
-      .replace('+', '')
-      .replace('-', '')
-      .trim();
-    
-    const parsed = parseFloat(amtStr);
-    if (isNaN(parsed)) return amt;
-    
-    const formatted = parsed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (cleanedCurr === 'USD') {
-      return `$${formatted}`;
-    } else {
-      return `${formatted} ៛`;
-    }
+
+  // 1. Data Binding & Extraction Helpers
+  const getInitials = (name: string): string => {
+    if (!name) return 'SS';
+    const clean = name.replace(/[^a-zA-Z\s]/g, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'SS';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const formatToVNDateTime = (dateInput: any) => {
-    if (!dateInput) return 'May 11, 2022 | 8:42AM';
+  const formatCleanAmount = (amt: any) => {
+    if (!amt) return '1.00';
+    let amtStr = amt.toString().trim();
+    amtStr = amtStr
+      .replace(/[A-Za-z]/g, '')
+      .replace(/[$|៛|+|-]/g, '')
+      .trim();
+    const parsed = parseFloat(amtStr);
+    return isNaN(parsed) ? '1.00' : parsed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const formatDateTime = (dateInput: any) => {
+    const fallback = { displayDate: 'May 21, 2022 | 9:17PM', timeOnly: '9:17PM' };
+    if (!dateInput) return fallback;
     try {
       const date = new Date(dateInput);
       if (isNaN(date.getTime())) {
-        return String(dateInput);
+        const str = String(dateInput);
+        if (str.includes('|')) {
+          const parts = str.split('|');
+          return { displayDate: str, timeOnly: parts[1].trim() };
+        }
+        return fallback;
       }
-      const dateStr = date.toLocaleDateString('en-US', {
-        timeZone: 'Asia/Ho_Chi_Minh',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-      const timeStr = date.toLocaleTimeString('en-US', {
-        timeZone: 'Asia/Ho_Chi_Minh',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      }).replace(' ', ''); // standard "8:42AM" format
-      return `${dateStr} | ${timeStr}`;
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const month = months[date.getMonth()];
+      const day = date.getDate();
+      const year = date.getFullYear();
+      
+      let hours = date.getHours();
+      const minutes = date.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+      
+      const timeOnly = `${hours}:${minutesStr}${ampm}`;
+      return {
+        displayDate: `${month} ${day}, ${year} | ${timeOnly}`,
+        timeOnly
+      };
     } catch (e) {
-      return String(dateInput);
+      return fallback;
     }
   };
 
-  const details = transactionDetails || {
-    amount: amount ? formatAmountValue(amount, currency) : '$246.00',
-    date: formatToVNDateTime(transactionDate),
-    id: transactionId ? transactionId.toString() : '22422068',
-    senderName: senderName || 'JOHN DOE',
-    senderAccount: senderAccount || 'Payroll Account (001 726 280)',
-    receiverName: recipientName || 'RITHY PHUONG',
-    receiverAccount: recipientAccount || '009 876 543',
-    bankName: 'ABA Bank',
-    fee: '0.00',
-    note: note
-  };
-
+  // 2. Resolve Data Objects
   const isReceive = type === 'receive';
-  const displayPartyName = (isReceive ? details.senderName : details.receiverName) || 'ABA SYSTEM';
-  const displayAmount = details.amount;
+  const resolvedCurrency = (currency || (transactionDetails?.amount?.includes('៛') ? 'KHR' : 'USD')).toUpperCase();
+  const rawAmount = transactionDetails ? transactionDetails.amount : amount;
+  
+  const formattedAmountVal = formatCleanAmount(rawAmount);
+  const { displayDate, timeOnly } = formatDateTime(transactionDetails ? transactionDetails.date : transactionDate);
+
+  const resolvedRecipientName = (isReceive ? (senderName || transactionDetails?.senderName) : (recipientName || transactionDetails?.receiverName)) || 'Sovann SEUNG';
+  const resolvedRecipientAccount = (isReceive ? (senderAccount || transactionDetails?.senderAccount) : (recipientAccount || transactionDetails?.receiverAccount)) || '000 282 862';
+  const resolvedSenderAccount = (isReceive ? (recipientAccount || transactionDetails?.receiverAccount) : (senderAccount || transactionDetails?.senderAccount)) || 'Savings Account with ATM facility (000 282 862)';
+
+  const initials = getInitials(resolvedRecipientName);
+  const trxId = (transactionDetails ? transactionDetails.id : transactionId) || '9841385178';
 
   return (
     <motion.div 
@@ -116,69 +121,110 @@ export default function Receipt({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed inset-0 z-50 bg-[#005370] flex flex-col font-sans overflow-hidden"
+      className="fixed inset-0 z-50 bg-[#003b5c] flex flex-col font-sans overflow-hidden select-none"
     >
-      <StatusBar className="bg-[#005370]" />
-      <div className="flex-1 flex flex-col items-center justify-start pt-10 px-5">
-        {/* Success Icon */}
-        <div className="w-[72px] h-[72px] bg-[#7CB342] rounded-full flex items-center justify-center mb-4">
-          <Check className="w-10 h-10 text-white" strokeWidth={4} />
+      {/* Dynamic Status Bar synced with transaction time */}
+      <StatusBar className="bg-[#003b5c]" customTime={timeOnly} />
+      
+      <div className="flex-1 flex flex-col items-center justify-start pt-6 px-6 overflow-y-auto">
+        {/* Success Check Badge */}
+        <div className="w-[72px] h-[72px] bg-[#5cb85c] rounded-full flex items-center justify-center mb-3 shadow-[0_4px_10px_rgba(92,184,92,0.3)]">
+          <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
         </div>
-        <h2 className="text-white text-[18px] font-bold mb-8">Success</h2>
+        <h2 className="text-white text-[20px] font-semibold mb-6 tracking-wide">Success</h2>
         
-        {/* White Card */}
-        <div className="bg-white rounded-[4px] w-full max-w-[340px] p-5 shadow-lg">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-11 h-11 bg-[#005370] rounded-full flex items-center justify-center text-white text-[16px] font-bold uppercase">
-              {displayPartyName.charAt(0)}
+        {/* Receipt Ticket Card */}
+        <div className="bg-white rounded-[12px] w-full max-w-[340px] px-6 py-5 shadow-2xl relative flex flex-col">
+          {/* Card Top / Header */}
+          <div className="flex items-center gap-3">
+            <div className="relative shrink-0">
+              {/* Avatar circle */}
+              <div className="w-14 h-14 bg-[#64b5f6]/30 border border-[#64b5f6]/10 rounded-full flex items-center justify-center text-[#0d47a1] text-[18px] font-bold">
+                <span className="text-[#007ba8] font-bold text-[18px] tracking-wide">{initials}</span>
+              </div>
+              {/* Red Transaction Indicator Badge */}
+              <div className="absolute bottom-0 right-0 w-[20px] h-[20px] bg-[#d32f2f] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                </svg>
+              </div>
             </div>
-            <div>
-              <p className={`text-[15px] font-bold leading-tight ${isReceive ? 'text-[#007baf]' : 'text-gray-900'}`}>
-                {isReceive ? '+' : '-'}{displayAmount}
-              </p>
-              <p className="text-[13px] text-gray-700 uppercase tracking-wide mt-0.5">{displayPartyName}</p>
+            
+            <div className="flex flex-col">
+              <span className="text-[19px] text-[#212121] leading-tight font-sans">
+                <strong className="font-bold">-{formattedAmountVal}</strong>{' '}
+                <span className="text-gray-500 font-normal text-[15px]">{resolvedCurrency}</span>
+              </span>
+              <span className="text-[13px] text-gray-500 font-semibold tracking-wide mt-0.5">{resolvedRecipientName}</span>
             </div>
           </div>
           
-          <div className="border-t border-gray-200 my-4" />
+          {/* Ticket Edge Cutouts Separator */}
+          <div className="relative flex items-center my-6">
+            {/* Left cutout */}
+            <div className="absolute -left-[32px] w-4 h-4 rounded-full bg-[#003b5c] z-10"></div>
+            {/* Right cutout */}
+            <div className="absolute -right-[32px] w-4 h-4 rounded-full bg-[#003b5c] z-10"></div>
+            {/* Dashed line */}
+            <div className="w-full border-t border-dashed border-gray-200"></div>
+          </div>
           
-          {/* Details grid */}
+          {/* Card Bottom / Details Grid */}
           <div className="space-y-4">
             <div className="flex justify-between items-start gap-4">
-              <span className="text-[12px] text-gray-500 w-[100px] shrink-0">Trx. ID:</span>
-              <span className="text-[12px] text-gray-800 text-right font-medium">{details.id}</span>
+              <span className="text-[12px] text-gray-400 font-medium font-sans">Trx. ID:</span>
+              <span className="text-[12px] text-gray-800 text-right font-semibold font-sans">{trxId}</span>
             </div>
+            
             <div className="flex justify-between items-start gap-4">
-              <span className="text-[12px] text-gray-500 w-[100px] shrink-0">Transaction date:</span>
-              <span className="text-[12px] text-gray-800 text-right font-medium">{details.date}</span>
+              <span className="text-[12px] text-gray-400 font-medium font-sans">Transaction date:</span>
+              <span className="text-[12px] text-gray-800 text-right font-semibold font-sans">{displayDate}</span>
             </div>
+            
             <div className="flex justify-between items-start gap-4">
-              <span className="text-[12px] text-gray-500 w-[100px] shrink-0">From account:</span>
-              <span className="text-[12px] text-gray-800 text-right font-medium">{details.senderAccount}</span>
+              <span className="text-[12px] text-gray-400 font-medium font-sans">From account:</span>
+              <span className="text-[12px] text-gray-800 text-right font-semibold font-sans leading-relaxed">
+                {resolvedSenderAccount}
+              </span>
             </div>
+            
             <div className="flex justify-between items-start gap-4">
-              <span className="text-[12px] text-gray-500 w-[100px] shrink-0">To account:</span>
-              <span className="text-[12px] text-gray-800 text-right font-medium">{details.receiverAccount}</span>
-            </div>
-            {details.note && (
-              <div className="flex justify-between items-start gap-4">
-                <span className="text-[12px] text-gray-500 w-[100px] shrink-0">Remark:</span>
-                <span className="text-[12px] text-gray-800 text-right font-medium">{details.note}</span>
-              </div>
-            )}
-            <div className="flex justify-between items-start gap-4">
-              <span className="text-[12px] text-gray-500 w-[100px] shrink-0">Fee:</span>
-              <span className="text-[12px] text-gray-800 text-right font-medium">{details.fee} {currency || 'USD'}</span>
+              <span className="text-[12px] text-gray-400 font-medium font-sans">Amount:</span>
+              <span className="text-[12px] text-gray-800 text-right font-bold font-sans">
+                {formattedAmountVal} {resolvedCurrency}
+              </span>
             </div>
           </div>
+        </div>
+
+        {/* Action Options below card */}
+        <div className="flex justify-center items-center gap-12 mt-8 mb-6">
+          <button className="flex flex-col items-center group cursor-pointer">
+            <div className="w-12 h-12 bg-white/10 border border-white/10 rounded-full flex items-center justify-center transition-all group-hover:bg-white/20 active:scale-95">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7V5a2 2 0 012-2h2m10 0h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M9 9h6v6H9V9z" />
+              </svg>
+            </div>
+            <span className="text-[11px] text-white/80 font-medium tracking-wide mt-2">Screenshot</span>
+          </button>
+
+          <button className="flex flex-col items-center group cursor-pointer">
+            <div className="w-12 h-12 bg-white/10 border border-white/10 rounded-full flex items-center justify-center transition-all group-hover:bg-white/20 active:scale-95">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </div>
+            <span className="text-[11px] text-white/80 font-medium tracking-wide mt-2">Download</span>
+          </button>
         </div>
       </div>
       
-      {/* Bottom Button */}
+      {/* Bottom Red DONE Button */}
       <button 
         onClick={onBack}
-        className="w-full bg-[#ff0000] text-white py-[18px] text-[15px] pb-[calc(18px+env(safe-area-inset-bottom,0px))] font-[400] tracking-wider uppercase active:opacity-80 transition-opacity flex justify-center"
+        className="w-full bg-[#f44336] text-white py-4 text-[15px] pb-[calc(16px+env(safe-area-inset-bottom,0px))] font-bold tracking-wider uppercase active:opacity-90 transition-opacity flex justify-center items-center shadow-lg"
       >
         Done
       </button>

@@ -2,12 +2,17 @@ import React, { useState, useEffect } from 'react';
 
 interface StatusBarProps {
   className?: string;
+  customTime?: string;
 }
 
-export default function StatusBar({ className = '' }: StatusBarProps) {
+export default function StatusBar({ className = '', customTime }: StatusBarProps) {
   const [timeStr, setTimeStr] = useState('');
 
   useEffect(() => {
+    if (customTime) {
+      setTimeStr(customTime);
+      return;
+    }
     const updateTime = () => {
       const vnTime = new Date().toLocaleTimeString('en-US', {
         timeZone: 'Asia/Ho_Chi_Minh',
@@ -21,7 +26,7 @@ export default function StatusBar({ className = '' }: StatusBarProps) {
     updateTime();
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [customTime]);
 
   return (
     <div className={`w-full flex justify-between items-center px-6 py-2 text-white/95 text-[12px] font-bold font-sans select-none tracking-tight shrink-0 ${className}`}>
