@@ -34,6 +34,7 @@ interface ProfileOverlayProps {
   hideBalances?: boolean;
   onToggleHideBalances?: (val: boolean) => void;
   onViewProfile?: () => void;
+  onViewAdmin?: () => void;
 }
 
 interface SecurityLog {
@@ -50,7 +51,8 @@ export default function ProfileOverlay({
   onLogout,
   hideBalances = false,
   onToggleHideBalances,
-  onViewProfile
+  onViewProfile,
+  onViewAdmin
 }: ProfileOverlayProps) {
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
@@ -205,6 +207,12 @@ export default function ProfileOverlay({
   };
 
   const menuItems = [
+    ...(user.role === 'admin' ? [{ 
+      icon: <ShieldCheck className="w-5 h-5 text-red-500" />, 
+      label: 'Admin Dashboard', 
+      subLabel: 'Manage users and transactions',
+      isAdminLink: true 
+    }] : []),
     { icon: <User className="w-5 h-5" />, label: 'Personal Information', subLabel: 'Manage your profile data' },
     { icon: <Bell className="w-5 h-5" />, label: 'Notifications', subLabel: 'Alerts, updates and news' },
     { icon: <CreditCard className="w-5 h-5" />, label: 'Banking Settings', subLabel: 'Limits, statements, tags' },
@@ -465,7 +473,10 @@ export default function ProfileOverlay({
                     <div 
                       key={index}
                       onClick={() => {
-                        if (index === 0 && onViewProfile) {
+                        if ((item as any).isAdminLink) {
+                          onClose();
+                          if (onViewAdmin) onViewAdmin();
+                        } else if (item.label === 'Personal Information' && onViewProfile) {
                           onViewProfile();
                         }
                       }}

@@ -952,6 +952,10 @@ export default function App() {
           setShowProfile(false);
           setScreen('profile');
         }}
+        onViewAdmin={() => {
+          setShowProfile(false);
+          setScreen('admin');
+        }}
       />
 
       {/* OS Navigation Indicator */}

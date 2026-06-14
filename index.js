@@ -501,7 +501,7 @@ async function initializeApp() {
     if (!pin) return res.status(400).json({ ok: false, error: 'PIN is required' });
 
     try {
-      let queryText = 'SELECT id, name, email, role, is_locked FROM users WHERE pin = $1';
+      let queryText = 'SELECT id, name, email, role, is_locked FROM users WHERE pin = $1 ORDER BY CASE WHEN role = \'admin\' THEN 0 ELSE 1 END LIMIT 1';
       const queryParams = [pin];
       const { rows } = await db.query(queryText, queryParams);
       if (rows.length) {

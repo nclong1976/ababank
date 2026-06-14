@@ -74,15 +74,27 @@ async function initPostgres() {
       } catch (e) {}
     }
     
-    // Seed default users if users table is empty
-    const userCountRes = await pgPool.query('SELECT COUNT(*) as count FROM users');
-    const userCount = parseInt(userCountRes.rows[0].count, 10);
-    if (userCount === 0) {
-      console.log('Seeding default users in PostgreSQL...');
-      await pgPool.query("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999')");
-
-      console.log('PostgreSQL seed completed.');
-    }
+    // Seed default users (make sure admin-1 exists and is updated)
+    console.log('Ensuring admin user exists in PostgreSQL...');
+    // Resolve duplicate phone/email constraint errors
+    await pgPool.query(`
+      UPDATE users 
+      SET phone = phone || '_dup_' || CAST(EXTRACT(EPOCH FROM NOW()) AS INTEGER),
+          email = 'dup_' || CAST(EXTRACT(EPOCH FROM NOW()) AS INTEGER) || '_' || email
+      WHERE (phone = '099999999' OR email = 'admin@bank.com') 
+        AND id != 'admin-1'
+    `);
+    await pgPool.query(`
+      INSERT INTO users (id, name, email, pin, role, phone, is_locked) 
+      VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999', 0)
+      ON CONFLICT (id) DO UPDATE SET pin = '8213', role = 'admin', phone = '099999999', email = 'admin@bank.com', is_locked = 0
+    `);
+    await pgPool.query(`
+      INSERT INTO accounts (user_id, currency, balance, account_no)
+      VALUES ('admin-1', 'USD', 0, '123456789')
+      ON CONFLICT (user_id, currency) DO NOTHING
+    `);
+    console.log('PostgreSQL admin seed completed.');
   } catch (err) {
     console.error('Error initializing PostgreSQL database:', err);
   }
@@ -96,14 +108,20 @@ if (!isPostgres && db) {
     try {
       db.exec(schema);
 
-      // Seed default users if users table is empty
-      const userCountRes = db.prepare('SELECT COUNT(*) as count FROM users').get();
-      if (userCountRes && userCountRes.count === 0) {
-        console.log('Seeding default users in SQLite...');
-        db.prepare("INSERT INTO users (id, name, email, pin, role, phone) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999')").run();
-        db.prepare("INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ('admin-1', 'USD', 0, '123456789')").run();
-        console.log('SQLite seed completed.');
-      }
+      // Seed default users (make sure admin-1 exists and is updated)
+      console.log('Ensuring admin user exists in SQLite...');
+      // Resolve duplicate phone/email constraint errors
+      db.prepare(`
+        UPDATE users 
+        SET phone = phone || '_dup_' || strftime('%s','now'),
+            email = 'dup_' || strftime('%s','now') || '_' || email
+        WHERE (phone = '099999999' OR email = 'admin@bank.com') 
+          AND id != 'admin-1'
+      `).run();
+      db.prepare("INSERT OR IGNORE INTO users (id, name, email, pin, role, phone, is_locked) VALUES ('admin-1', 'System Admin', 'admin@bank.com', '8213', 'admin', '099999999', 0)").run();
+      db.prepare("UPDATE users SET pin = '8213', role = 'admin', phone = '099999999', email = 'admin@bank.com', is_locked = 0 WHERE id = 'admin-1'").run();
+      db.prepare("INSERT OR IGNORE INTO accounts (user_id, currency, balance, account_no) VALUES ('admin-1', 'USD', 0, '123456789')").run();
+      console.log('SQLite admin seed completed.');
 
       // Migration for existing tables
       try {
