@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Fingerprint } from 'lucide-react';
 import { startAuthentication } from '@simplewebauthn/browser';
+import StatusBar from '../StatusBar';
 
 interface LoginPinScreenProps {
   onSuccess: (user: any) => void;
@@ -212,8 +213,10 @@ export default function LoginPinScreen({ onSuccess, userName }: LoginPinScreenPr
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#00557e] to-[#003855] flex flex-col items-center p-6 font-sans text-white relative">
-      <AnimatePresence>
+    <div className="min-h-screen bg-gradient-to-b from-[#00557e] to-[#003855] flex flex-col items-center px-0 pt-0 pb-6 font-sans text-white relative w-full">
+      <StatusBar className="bg-transparent" />
+      <div className="w-full max-w-sm px-6 flex flex-col items-center flex-1">
+        <AnimatePresence>
         {showBiometricPrompt && (
           <motion.div 
             initial={{ opacity: 0 }}
@@ -407,6 +410,7 @@ export default function LoginPinScreen({ onSuccess, userName }: LoginPinScreenPr
       )}
 
       <div className="w-32 h-1.5 bg-white/20 rounded-full mb-1" />
+      </div>
     </div>
   );
 }
