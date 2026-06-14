@@ -973,9 +973,9 @@ async function initializeApp() {
          return {
            id: r.id,
            amount: Math.abs(parseFloat(r.amount)),
-           type: r.amount < 0 || r.type === 'minus' ? 'send' : 'receive',
+           type: r.amount < 0 || r.type === 'minus' || r.type === 'send' ? 'send' : 'receive',
            currency: currency,
-           partyName: r.party_name || (r.type === 'minus' ? 'RECIPIENT' : 'ABA SYSTEM'),
+           partyName: r.party_name || (r.type === 'minus' || r.type === 'send' ? 'RECIPIENT' : 'ABA SYSTEM'),
            partyAccountNo: r.party_account_no || '000 000 000',
            createdAt: r.created_at ? (typeof r.created_at === 'string' ? r.created_at.replace(' ', 'T') + 'Z' : r.created_at.toISOString()) : new Date().toISOString(),
            note: r.note,
