@@ -66,7 +66,7 @@ export default function Receipt({
   };
 
   const formatDateTime = (dateInput: any) => {
-    const fallback = { displayDate: 'May 21, 2022 | 9:17PM', timeOnly: '9:17PM' };
+    const fallback = { displayDate: '09 Jun 2024, 08:34', timeOnly: '08:34' };
     if (!dateInput) return fallback;
     try {
       const date = new Date(dateInput);
@@ -83,16 +83,16 @@ export default function Receipt({
       const day = date.getDate();
       const year = date.getFullYear();
       
-      let hours = date.getHours();
+      const hours = date.getHours();
       const minutes = date.getMinutes();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      const minutesStr = minutes < 10 ? '0' + minutes : minutes;
       
-      const timeOnly = `${hours}:${minutesStr}${ampm}`;
+      const dayStr = day < 10 ? '0' + day : day.toString();
+      const hoursStr = hours < 10 ? '0' + hours : hours.toString();
+      const minutesStr = minutes < 10 ? '0' + minutes : minutes.toString();
+      
+      const timeOnly = `${hoursStr}:${minutesStr}`;
       return {
-        displayDate: `${month} ${day}, ${year} | ${timeOnly}`,
+        displayDate: `${dayStr} ${month} ${year}, ${timeOnly}`,
         timeOnly
       };
     } catch (e) {
