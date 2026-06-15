@@ -41,6 +41,7 @@ if (dbUrl) {
   if (Database) {
       db = new Database(dbPath);
   console.log('Database: Using SQLite at ' + dbPath);
+  }
 }
 
 // Function to initialize PostgreSQL tables & seed data
@@ -328,7 +329,7 @@ module.exports = {
     
     if (sql.trim().toUpperCase().startsWith('SELECT')) {
       try {
-        const rows = db.prepare(sql).all(sqliteParams);
+        const rows = db.prepare(sql).all(...sqliteParams);
         return { rows };
       } catch (err) {
         console.error('SQL SELECT error:', sql, sqliteParams, err);
@@ -336,7 +337,7 @@ module.exports = {
       }
     } else {
       try {
-        const result = db.prepare(sql).run(sqliteParams);
+        const result = db.prepare(sql).run(...sqliteParams);
         return { 
           rows: result.changes > 0 ? [{ id: result.lastInsertRowid }] : [],
           rowCount: result.changes
@@ -370,9 +371,9 @@ module.exports = {
       query: async (text, params = []) => {
         const { sql, sqliteParams } = prepareSqlAndParams(text, params);
         if (sql.trim().toUpperCase().startsWith('SELECT')) {
-           return { rows: db.prepare(sql).all(sqliteParams) };
+           return { rows: db.prepare(sql).all(...sqliteParams) };
         }
-        const result = db.prepare(sql).run(sqliteParams);
+        const result = db.prepare(sql).run(...sqliteParams);
         return { rows: [{ id: result.lastInsertRowid }], rowCount: result.changes };
       },
       release: () => {},
