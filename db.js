@@ -191,6 +191,12 @@ if (!isPostgres && db) {
         if (!userMeta.some(c => c.name === 'is_topup_locked')) {
           db.prepare("ALTER TABLE users ADD COLUMN is_topup_locked INTEGER DEFAULT 0").run();
         }
+            if (!userMeta.some(c => c.name === 'avatar_url')) {
+              db.prepare("ALTER TABLE users ADD COLUMN avatar_url TEXT").run();
+            }
+            if (!userMeta.some(c => c.name === 'updated_at')) {
+              db.prepare("ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP").run();
+            }
 
         const accountMeta = db.prepare('PRAGMA table_info(accounts)').all();
         if (!accountMeta.some(c => c.name === 'account_no')) {
