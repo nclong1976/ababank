@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "installCommand": "npm install",
   "functions": {
     "api/index.js": {
       "includeFiles": "schema.sql"
