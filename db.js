@@ -198,7 +198,7 @@ if (!isPostgres && db) {
               db.prepare("ALTER TABLE users ADD COLUMN avatar_url TEXT").run();
             }
             if (!userMeta.some(c => c.name === 'updated_at')) {
-              db.prepare("ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP").run();
+              db.prepare("ALTER TABLE users ADD COLUMN updated_at TIMESTAMP").run();
             }
 
         const accountMeta = db.prepare('PRAGMA table_info(accounts)').all();
@@ -206,7 +206,7 @@ if (!isPostgres && db) {
           db.prepare("ALTER TABLE accounts ADD COLUMN account_no TEXT").run();
         }
         if (!accountMeta.some(c => c.name === 'updated_at')) {
-          db.prepare("ALTER TABLE accounts ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP").run();
+          db.prepare("ALTER TABLE accounts ADD COLUMN updated_at TIMESTAMP").run();
         }
 
         if (checkTx('pin-4-digit-enforcement') === 0) {
