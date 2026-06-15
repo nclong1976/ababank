@@ -768,7 +768,7 @@ export default function LoginPinScreen({ onSuccess, userName }: LoginPinScreenPr
           </div>
         )}
 
-        {/{/* 7. REGISTRATION SUCCESS SCREEN */}
+        {/* 7. REGISTRATION SUCCESS SCREEN */}
         {authMode === 'registerSuccess' && createdUserAccounts && (
           <AccountCreationSuccess
             userName={createdUserAccounts.name}
