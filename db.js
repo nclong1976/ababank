@@ -1,4 +1,4 @@
-const Database = require('better-sqlite3');
+let Database; try { Database = require('better-sqlite3'); } catch(e) { console.warn('[db] better-sqlite3 not available:', e.message); }
 const path = require('path');
 const fs = require('fs');
 
@@ -19,6 +19,7 @@ if (dbUrl) {
   isPostgres = true;
   console.log('Database: Using PostgreSQL');
 } else {
+  if (!Database) { console.error('[db] better-sqlite3 failed to load. Please set DATABASE_URL for PostgreSQL.'); }
   let dbPath = path.join(process.cwd(), 'dev.db');
   // Vercel serverless functions have a read-only filesystem except for /tmp
   if (process.env.VERCEL) {
@@ -37,7 +38,8 @@ if (dbUrl) {
       }
     }
   }
-  db = new Database(dbPath);
+  if (Database) {
+      db = new Database(dbPath);
   console.log('Database: Using SQLite at ' + dbPath);
 }
 
