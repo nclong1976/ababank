@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Fingerprint, ChevronLeft, Lock } from 'lucide-react';
 import { startAuthentication } from '@simplewebauthn/browser';
 import StatusBar from '../StatusBar';
+import AccountCreationSuccess from './AccountCreationSuccess';
 
 interface LoginPinScreenProps {
   onSuccess: (user: any) => void;
@@ -767,69 +768,15 @@ export default function LoginPinScreen({ onSuccess, userName }: LoginPinScreenPr
           </div>
         )}
 
-        {/* 7. REGISTRATION SUCCESS SCREEN */}
-        {authMode === 'registerSuccess' && (
-          <div className="flex-1 flex flex-col w-full items-center pt-16">
-            <div className="w-20 h-20 rounded-full bg-[#6dbf14] flex items-center justify-center mb-6 shadow-lg shadow-green-950/20">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 text-white">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </div>
-
-            <h2 className="text-white/80 text-xl font-medium tracking-wide mb-1 text-center select-none">Welcome to ABA,</h2>
-            <h1 className="text-white text-3xl font-black mb-8 text-center">{createdUserAccounts?.name}!</h1>
-
-            <div className="w-full max-w-[325px] bg-[#edf2f4] rounded-[24px] p-5 mb-8 flex flex-col gap-4 text-black shadow-2xl">
-              <div className="flex flex-col gap-1 relative pb-3 border-b border-black/10 select-none">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Your KHR account:</span>
-                  <span className="text-[10px] font-bold text-[#005e7e] hover:underline cursor-pointer">Deposit Money Now &gt;</span>
-                </div>
-                <span className="text-xl font-extrabold text-[#002d3f] tracking-wide pt-1">
-                  {createdUserAccounts?.KHR.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-1 relative pb-1.5 select-none">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Your USD account:</span>
-                  <span className="text-[10px] font-bold text-[#005e7e] hover:underline cursor-pointer">Deposit Money Now &gt;</span>
-                </div>
-                <span className="text-xl font-extrabold text-[#002d3f] tracking-wide pt-1">
-                  {createdUserAccounts?.USD.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}
-                </span>
-              </div>
-
-              <span className="text-[11px] text-gray-500 font-medium leading-relaxed select-none">
-                Please save your ABA account numbers for your future reference.
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center gap-1.5 mb-8 select-none">
-              <button 
-                onClick={() => {
-                  alert("Accounts saved successfully!");
-                }}
-                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-[#00bcd4] border border-[#00bcd4]/30 cursor-pointer transition-colors active:scale-95"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              </button>
-              <span className="text-[11px] text-[#00bcd4] font-bold uppercase tracking-wider">Save</span>
-            </div>
-
-            <div className="w-full px-4 pb-6 mt-auto">
-              <button
-                onClick={() => {
-                  if (tempUser) {
-                    onSuccess(tempUser);
-                  }
-                }}
-                className="w-full py-4 bg-[#e24a4b] hover:bg-[#d63f40] rounded-[12px] font-extrabold text-white tracking-wider active:scale-[0.98] transition-all cursor-pointer shadow-lg shadow-red-950/20"
-              >
-                START BANKING
-              </button>
-            </div>
-          </div>
+        {/{/* 7. REGISTRATION SUCCESS SCREEN */}
+        {authMode === 'registerSuccess' && createdUserAccounts && (
+          <AccountCreationSuccess
+            userName={createdUserAccounts.name}
+            khrAccount={createdUserAccounts.KHR}
+            usdAccount={createdUserAccounts.USD}
+            onStartBanking={() => { if (tempUser) { onSuccess(tempUser); } }}
+            onClose={() => setAuthMode('welcome')}
+          />
         )}
 
       </div>
