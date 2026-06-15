@@ -61,12 +61,12 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
         console.error('Camera access error:', err);
         const errMsg = err.message || String(err);
         if (errMsg.includes('Permission denied') || errMsg.includes('NotAllowedError')) {
-          setError('Bạn chưa cấp quyền truy cập camera.');
+          setError('Camera access permission denied.');
         } else if (errMsg.includes('AbortError')) {
           // Silent failure for AbortError as it's usually just a component unmount
           console.log('Camera request was aborted');
         } else {
-          setError('Không thể mở camera: ' + errMsg);
+          setError('Unable to open camera: ' + errMsg);
         }
       }
     };

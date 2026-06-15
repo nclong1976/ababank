@@ -25,12 +25,12 @@ export const TransactionHistory: React.FC = () => {
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4">Lịch sử giao dịch</h2>
+      <h2 className="text-xl font-bold mb-4">Transaction History</h2>
       
       <div className="flex flex-col gap-3 mb-6">
         {/* Type Filter */}
         <div>
-          <label className="text-sm font-medium text-gray-500 mb-2 block">Loại giao dịch</label>
+          <label className="text-sm font-medium text-gray-500 mb-2 block">Transaction Type</label>
           <div className="flex gap-2">
             {(['all', 'send', 'receive'] as const).map((type) => (
               <button
@@ -42,7 +42,7 @@ export const TransactionHistory: React.FC = () => {
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {type === 'all' ? 'Tất cả' : type === 'send' ? 'Gửi' : 'Nhận'}
+                {type === 'all' ? 'All' : type === 'send' ? 'Sent' : 'Received'}
               </button>
             ))}
           </div>
@@ -50,7 +50,7 @@ export const TransactionHistory: React.FC = () => {
 
         {/* Currency Filter */}
         <div>
-          <label className="text-sm font-medium text-gray-500 mb-2 block">Tiền tệ</label>
+          <label className="text-sm font-medium text-gray-500 mb-2 block">Currency</label>
           <div className="flex gap-2">
             {(['all', 'USD', 'KHR'] as const).map((currency) => (
               <button
@@ -62,7 +62,7 @@ export const TransactionHistory: React.FC = () => {
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {currency === 'all' ? 'Tất cả' : currency}
+                {currency === 'all' ? 'All' : currency}
               </button>
             ))}
           </div>
@@ -71,14 +71,14 @@ export const TransactionHistory: React.FC = () => {
 
       <div className="space-y-2">
         {filteredTransactions.length === 0 ? (
-          <p>Không có giao dịch nào.</p>
+          <p>No transactions found.</p>
         ) : (
           filteredTransactions.map(t => (
             <div key={t.id} className="p-3 border-b flex justify-between items-center">
               <div>
-                <p className="font-semibold">{t.type === 'send' ? 'Gửi đến' : 'Nhận từ'} {t.type === 'send' ? t.receiverId : t.senderId}</p>
+                <p className="font-semibold">{t.type === 'send' ? 'Sent to' : 'Received from'} {t.type === 'send' ? t.receiverId : t.senderId}</p>
                 <p className="text-sm text-gray-500">
-                  {t.timestamp?.toDate ? format(t.timestamp.toDate(), 'dd/MM/yyyy HH:mm:ss') : 'Đang tải...'}
+                  {t.timestamp?.toDate ? format(t.timestamp.toDate(), 'dd/MM/yyyy HH:mm:ss') : 'Loading...'}
                 </p>
               </div>
               <p className={`font-bold ${t.type === 'send' ? 'text-red-500' : 'text-green-500'}`}>

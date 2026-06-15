@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import StatusBar from './StatusBar';
 
 interface ReceiptProps {
@@ -43,6 +43,22 @@ export default function Receipt({
   type,
   note
 }: ReceiptProps) {
+  const [showNotification, setShowNotification] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowNotification(true);
+    }, 2000);
+    
+    const hideTimer = setTimeout(() => {
+      setShowNotification(false);
+    }, 7000);
+    
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
 
   // 1. Data Binding & Extraction Helpers
   const getInitials = (name: string): string => {
@@ -113,7 +129,24 @@ export default function Receipt({
   const resolvedSenderAccount = (isReceive ? (recipientAccount || transactionDetails?.receiverAccount) : (senderAccount || transactionDetails?.senderAccount)) || 'Savings Account with ATM facility (000 282 862)';
 
   const initials = getInitials(resolvedRecipientName);
-  const trxId = (transactionDetails ? transactionDetails.id : transactionId) || '9841385178';
+  
+  const trxId = React.useMemo(() => {
+    const rawId = (transactionDetails ? transactionDetails.id : transactionId) || '9841385178';
+    if (/^\d{10}$/.test(rawId)) return rawId;
+    
+    let h1 = 0xdeadbeef ^ 0, h2 = 0x41c6ce57 ^ 0;
+    for (let i = 0; i < rawId.length; i++) {
+      let ch = rawId.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    
+    const s1 = Math.abs(h1).toString().padStart(10, '0');
+    const s2 = Math.abs(h2).toString().padStart(10, '0');
+    return s1.substring(0, 5) + s2.substring(0, 5);
+  }, [transactionDetails, transactionId]);
 
   return (
     <motion.div 
@@ -123,6 +156,37 @@ export default function Receipt({
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
       className="fixed inset-0 z-50 bg-[#003b5c] flex flex-col font-sans overflow-hidden select-none"
     >
+      {/* iOS-style Push Notification */}
+      <AnimatePresence>
+        {showNotification && (
+          <motion.div
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 12, opacity: 1 }}
+            exit={{ y: -100, opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="absolute top-0 left-3 right-3 z-[100]"
+          >
+            <div className="bg-[#6b1e18]/95 backdrop-blur-xl rounded-[20px] p-3.5 flex items-start gap-3 shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-white/10">
+               {/* ABA Icon */}
+               <div className="w-10 h-10 rounded-[10px] bg-gradient-to-b from-[#005c7a] to-[#003b5c] flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+                 <span className="text-white text-[11px] font-black tracking-widest ml-0.5">ABA</span>
+               </div>
+               
+               {/* Notification Content */}
+               <div className="flex-1 pt-0.5">
+                  <div className="flex justify-between items-start mb-0.5">
+                     <h4 className="text-white/95 text-[14px] font-semibold tracking-wide uppercase">{resolvedRecipientName}</h4>
+                     <span className="text-white/60 text-[12px] font-medium mt-0.5">now</span>
+                  </div>
+                  <p className="text-white/90 text-[13.5px] leading-[1.3] font-medium">
+                    {formattedAmountVal} {resolvedCurrency} Payment from account {resolvedSenderAccount.match(/(\d{3}\s?\d{3}\s?\d{3})/) ? resolvedSenderAccount.match(/(\d{3}\s?\d{3}\s?\d{3})/)![1] : resolvedSenderAccount.replace(/\D/g, '').slice(-9).replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}
+                  </p>
+               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Dynamic Status Bar synced with transaction time */}
       <StatusBar className="bg-[#003b5c]" customTime={timeOnly} />
       
@@ -174,7 +238,7 @@ export default function Receipt({
           {/* Card Bottom / Details Grid */}
           <div className="space-y-4">
             <div className="flex justify-between items-start gap-4">
-              <span className="text-[12px] text-gray-400 font-medium font-sans">Trx. ID:</span>
+              <span className="text-[12px] text-gray-400 font-medium font-sans">Trx.</span>
               <span className="text-[12px] text-gray-800 text-right font-semibold font-sans">{trxId}</span>
             </div>
             

@@ -44,12 +44,12 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
   const [targetUser, setTargetUser] = useState<any>(null);
   const [amount, setAmount] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'KHR'>('USD');
-  const [reason, setReason] = useState('Admin cộng tiền');
+  const [reason, setReason] = useState('Admin adjustment (plus)');
   const [senderName, setSenderName] = useState('Sok Samnang');
   const [senderAccount, setSenderAccount] = useState('123 456 789');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Helper: Sinh ngẫu nhiên tên người Campuchia và STK
+  // Helper: Generate random Cambodian name and account number
   const cambodianNames = [
     "Sok Samnang", "Chea Vanna", "Meas Sophea", "Chan Rithy", "Keo Srey", 
     "Phan Sothea", "Ratha Lim", "Sovannara Chea", "Vireak Bun", "Dara Noun", 
@@ -171,7 +171,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
 
   const handleCreateUser = async () => {
     if (!createFormData.phone || !createFormData.pin) {
-      alert('Số điện thoại và mã PIN là bắt buộc');
+      alert('Phone number and PIN are required');
       return;
     }
     try {
@@ -192,7 +192,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
         fetchUsers();
       } else {
         const errorData = await res.json();
-        alert('Lỗi: ' + errorData.error);
+        alert('Error: ' + errorData.error);
       }
     } catch (err) {
       console.error(err);
@@ -333,7 +333,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input 
                   type="text"
-                  placeholder="Tìm theo tên hoặc ID..."
+                  placeholder="Search by name or ID..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm outline-none focus:border-[#D4AF37] transition-all"
@@ -450,14 +450,14 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                 {/* Account Info Grid */}
                 <div className="grid grid-cols-2 gap-3 mb-5">
                    <div className="bg-black/30 rounded-xl p-3 border border-gray-800">
-                      <div className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-1.5">USD Account (9 số)</div>
+                      <div className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-1.5">USD Account (9 digits)</div>
                       <div className="text-xs text-white font-mono mb-1">{u.accountNumbers?.USD || '--- --- ---'}</div>
                       <div className="text-sm font-black text-[#D4AF37]">
                         ${Number(u.balances?.USD || 0).toLocaleString()}
                       </div>
                    </div>
                    <div className="bg-black/30 rounded-xl p-3 border border-gray-800">
-                      <div className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-1.5">KHR Account (9 số)</div>
+                      <div className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-1.5">KHR Account (9 digits)</div>
                       <div className="text-xs text-white font-mono mb-1">{u.accountNumbers?.KHR || '--- --- ---'}</div>
                       <div className="text-sm font-black text-[#D4AF37]">
                         {Number(u.balances?.KHR || 0).toLocaleString()} ៛
@@ -480,25 +480,25 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                     }}
                     className={`flex-1 py-2.5 rounded-xl font-bold text-[10px] tracking-widest uppercase transition-all ${u.is_topup_locked ? 'bg-gray-800 text-gray-600 border border-white/5 cursor-not-allowed' : 'bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-black shadow-lg shadow-[#D4AF37]/20 active:scale-95'}`}
                    >
-                     {u.is_topup_locked ? 'Khoá Nạp' : 'Nạp Tiền (Cộng)'}
+                     {u.is_topup_locked ? 'Lock Deposit' : 'Deposit (Plus)'}
                    </button>
                    <button 
                     onClick={() => {
                       setTargetUser(u);
                       setAdjustType('minus');
-                      setReason('Admin trừ tiền');
+                      setReason('Admin adjustment (minus)');
                       setIsAdjustModalOpen(true);
                       setAmount('');
                     }}
                     className="flex-1 py-2.5 bg-gradient-to-r from-red-600 to-red-800 text-white rounded-xl font-bold text-[10px] tracking-widest uppercase active:scale-95 transition-all shadow-lg shadow-red-500/20"
                    >
-                     Trừ Tiền
+                     Deduct
                    </button>
                    <button 
                     onClick={() => handleEditUser(u)}
                     className="px-4 py-2.5 bg-white/5 text-gray-400 border border-white/5 rounded-xl font-bold text-[10px] tracking-widest uppercase hover:bg-white/10 active:scale-95 transition-all"
                    >
-                     Cài đặt
+                     Settings
                    </button>
                 </div>
               </motion.div>
@@ -574,8 +574,8 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border shadow-inner ${adjustType === 'minus' ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-[#D4AF37]/10 border-[#D4AF37]/20 text-[#D4AF37]'}`}>
                       {adjustType === 'minus' ? <Minus className="w-8 h-8" strokeWidth={2.5} /> : <Plus className="w-8 h-8" strokeWidth={2.5} />}
                    </div>
-                   <h3 className="text-xl font-black text-white font-sans tracking-tight mb-1">ĐIỀU CHỈNH SỐ DƯ</h3>
-                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">{adjustType === 'minus' ? 'Trừ tiền của' : 'Cộng số dư cho'} {targetUser.name}</p>
+                   <h3 className="text-xl font-black text-white font-sans tracking-tight mb-1">BALANCE ADJUSTMENT</h3>
+                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">{adjustType === 'minus' ? 'Deduct funds from' : 'Add balance to'} {targetUser.name}</p>
                 </header>
 
                 <div className="space-y-6">
@@ -591,7 +591,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                    </div>
 
                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">{adjustType === 'minus' ? 'Số tiền cần trừ' : 'Số tiền cộng'}</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">{adjustType === 'minus' ? 'Amount to deduct' : 'Amount to add'}</label>
                       <div className="relative">
                          <div className={`absolute left-5 top-1/2 -translate-y-1/2 font-black text-xl ${adjustType === 'minus' ? 'text-red-500' : 'text-[#D4AF37]'}`}>
                             {selectedCurrency === 'USD' ? '$' : '៛'}
@@ -611,7 +611,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                      <>
                        <div className="space-y-2 relative">
                           <div className="flex justify-between items-center pr-1">
-                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Tên Người Gửi (Giả lập)</label>
+                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Sender Name (Mock)</label>
                              <button 
                                onClick={() => {
                                   const r = generateRandomSender();
@@ -620,29 +620,29 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                                }}
                                className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-widest hover:underline"
                              >
-                                ĐỔI NGƯỜI KHÁC
+                                CHANGE SENDER
                              </button>
                           </div>
                           <input 
                             value={senderName}
                             onChange={e => setSenderName(e.target.value)}
-                            placeholder="Ví dụ: Sok Samnang"
+                            placeholder="Example: Sok Samnang"
                             className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold text-gray-300 outline-none transition-all focus:border-[#D4AF37]"
                           />
                        </div>
                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">STK Người Gửi (Giả lập)</label>
-                          <input 
-                            value={senderAccount}
-                            onChange={e => setSenderAccount(e.target.value)}
-                            placeholder="Ví dụ: 123 456 789"
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold text-gray-300 outline-none transition-all focus:border-[#D4AF37]"
-                          />
-                       </div>
+                           <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Sender Account No (Mock)</label>
+                           <input 
+                             value={senderAccount}
+                             onChange={e => setSenderAccount(e.target.value)}
+                             placeholder="Example: 123 456 789"
+                             className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold text-gray-300 outline-none transition-all focus:border-[#D4AF37]"
+                           />
+                        </div>
                      </>
                    )}
                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Ghi chú (Note giao dịch)</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Note (Transaction Note)</label>
                       <input 
                         value={reason}
                         onChange={e => setReason(e.target.value)}
@@ -654,13 +654,13 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                       <button 
                         onClick={() => setIsAdjustModalOpen(false)}
                         className="flex-1 py-4 text-xs font-bold tracking-widest uppercase text-gray-500 hover:text-white transition-colors"
-                      >HỦY BỎ</button>
+                      >CANCEL</button>
                       <button 
                         disabled={isProcessing || !amount}
                         onClick={() => handleAdjustment()}
                         className={`flex-[2] py-4 rounded-2xl font-black text-xs tracking-widest uppercase active:scale-95 disabled:opacity-50 transition-all ${adjustType === 'minus' ? 'bg-gradient-to-r from-red-600 to-red-800 text-white shadow-xl shadow-red-500/30' : 'bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-black shadow-xl shadow-[#D4AF37]/30'}`}
                       >
-                        {isProcessing ? 'ĐANG XỬ LÝ...' : (adjustType === 'minus' ? 'XÁC NHẬN TRỪ' : 'XÁC NHẬN CỘNG')}
+                        {isProcessing ? 'PROCESSING...' : (adjustType === 'minus' ? 'CONFIRM DEDUCT' : 'CONFIRM ADD')}
                       </button>
                    </div>
                 </div>
@@ -684,7 +684,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
             >
               <div className="flex justify-between items-center mb-8">
                 <div>
-                   <h3 className="text-2xl font-black text-white tracking-tight uppercase">Thêm Mới</h3>
+                   <h3 className="text-2xl font-black text-white tracking-tight uppercase">Add New</h3>
                    <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-widest">Premium Membership</p>
                 </div>
                 <button onClick={() => setShowCreateUserModal(false)} className="p-2 rounded-full hover:bg-white/10 transition-colors"><X className="text-gray-500" /></button>
@@ -692,17 +692,17 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
 
               <div className="space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Số điện thoại</label>
+                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Phone Number</label>
                   <input 
                     type="tel"
-                    placeholder="ví dụ: 0987654321"
+                    placeholder="example: 0987654321"
                     value={createFormData.phone}
                     onChange={e => setCreateFormData({...createFormData, phone: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 outline-none focus:border-[#D4AF37] transition-all text-white font-bold"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Mã PIN Đăng Nhập (4 số)</label>
+                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Login PIN (4 digits)</label>
                   <input 
                     maxLength={4}
                     placeholder="****"
@@ -718,7 +718,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                     onClick={handleCreateUser}
                     className="w-full py-5 rounded-[1.5rem] font-black tracking-[0.2em] bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-black shadow-[0_15px_30px_rgba(212,175,55,0.15)] active:scale-95 transition-all text-xs"
                   >
-                    TẠO TÀI KHOẢN NGAY
+                    CREATE ACCOUNT NOW
                   </button>
                 </div>
               </div>
@@ -740,13 +740,13 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
               className="relative w-full max-w-sm bg-[#121212] rounded-[2.5rem] p-8 shadow-2xl border border-gray-800"
             >
               <div className="flex justify-between items-center mb-8">
-                <h3 className="text-xl font-black text-white">Chỉnh Sửa</h3>
+                <h3 className="text-xl font-black text-white">Edit User</h3>
                 <button onClick={() => setEditingUser(null)} className="p-2 rounded-full hover:bg-white/10 transition-colors"><X className="text-gray-500" /></button>
               </div>
-
+ 
               <div className="space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Họ Tên</label>
+                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Full Name</label>
                   <input 
                     value={editFormData.name}
                     onChange={e => setEditFormData({...editFormData, name: e.target.value})}
@@ -754,7 +754,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                   />
                 </div>
                 <div className="space-y-1.5">
-                   <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Mã PIN</label>
+                   <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">PIN</label>
                    <input 
                      maxLength={4}
                      value={editFormData.pin}
@@ -763,7 +763,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                    />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Vai Trò</label>
+                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest pl-1">Role</label>
                   <select 
                     value={editFormData.role}
                     onChange={e => setEditFormData({...editFormData, role: e.target.value})}
@@ -779,7 +779,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
                     onClick={saveUserChanges}
                     className="flex-1 py-4 bg-[#D4AF37] text-black rounded-[1.2rem] font-black text-[10px] tracking-widest active:scale-95 transition-all shadow-lg shadow-[#D4AF37]/20"
                   >
-                    LƯU THAY ĐỔI
+                    SAVE CHANGES
                   </button>
                 </div>
               </div>

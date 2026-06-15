@@ -234,7 +234,7 @@ export default function App() {
   const [scannedData, setScannedData] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<'km' | 'en' | 'zh'>('en');
   const [balances, setBalances] = useState<Record<string, number>>({ KHR: 1500000, USD: 2500 });
-  const [accountNumbers, setAccountNumbers] = useState<Record<string, string>>({ KHR: 'KHR789632', USD: 'USD789632' });
+  const [accountNumbers, setAccountNumbers] = useState<Record<string, string>>({ KHR: '000000000', USD: '000000000' });
   const [hideBalances, setHideBalances] = useState(() => {
     return localStorage.getItem('hide_balances_enabled') === 'true';
   });
@@ -329,7 +329,7 @@ export default function App() {
   const [savedUserName, setSavedUserName] = useState(() => localStorage.getItem('savedUserName') || 'So Dawin!');
   const currentUserName = currentUser?.viewingName || currentUser?.name || savedUserName;
   const [activeCurrency, setActiveCurrency] = useState<'USD' | 'KHR'>('USD');
-  const currentUserAccountNo = accountNumbers[activeCurrency] || (activeCurrency === 'USD' ? 'USD789632' : 'KHR789632');
+  const currentUserAccountNo = accountNumbers[activeCurrency] || (activeCurrency === 'USD' ? '000000000' : '000000000');
   const [displayBalance, setDisplayBalance] = useState(0);
 
   useEffect(() => {
@@ -778,7 +778,7 @@ export default function App() {
               <div className="px-2 py-[2px] flex items-center rounded-[4px] bg-[#4abfb4] text-[10px] font-medium text-white tracking-wide uppercase">
                 {activeCurrency} Savings
               </div>
-              <span className="text-[#9ea6b5] font-normal text-[13px] font-khmer capitalize">{currentUserAccountNo}</span>
+              <span className="text-[#9ea6b5] font-normal text-[13px] font-khmer capitalize">{currentUserAccountNo.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}</span>
             </div>
           </div>
 

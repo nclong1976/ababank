@@ -61,7 +61,7 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
         const khqr = parseKHQR(scannedData);
         setQrValid(khqr.isValid);
         setRecipientAccount(khqr.accountNo?.trim() || '');
-        setRecipientName(khqr.name || '');
+        setRecipientName(khqr.name || 'Unknown Recipient');
         if (khqr.amount) setAmount(khqr.amount);
         
         const targetCur = khqr.currency === '116' ? 'KHR' : 'USD';

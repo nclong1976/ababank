@@ -82,37 +82,50 @@ export function generateKHQRString(data: KHQRData): string {
  */
 export function parseEMV(str: string): Record<string, string> {
   const result: Record<string, string> = {};
+  
   try {
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder("utf-8");
-    const bytes = encoder.encode(str);
     let i = 0;
-    while (i < bytes.length) {
-      if (i + 4 > bytes.length) break;
-      const tag = decoder.decode(bytes.slice(i, i + 2));
-      const lengthStr = decoder.decode(bytes.slice(i + 2, i + 4));
+    while (i < str.length) {
+      if (i + 4 > str.length) break;
+      const tag = str.substring(i, i + 2);
+      const lengthStr = str.substring(i + 2, i + 4);
       const length = parseInt(lengthStr, 10);
-      if (isNaN(length) || i + 4 + length > bytes.length) {
-        // Fallback to previous string-based parsing if byte-parsing gets confused 
-        // (this handles some malformed QRs that use char length instead of byte length)
+      
+      if (isNaN(length)) {
         break;
       }
-      const valueBytes = bytes.slice(i + 4, i + 4 + length);
-      const value = decoder.decode(valueBytes);
+
+      // Check if string contains any multi-byte characters that would mess up substring mapping
+      // If it doesn't, we can just use substring directly.
+      // If it does, we need to carefully extract the bytes.
+      let value = str.substring(i + 4, i + 4 + length);
+      
+      // Attempt to decode ISO-8859-1 garbled text (common in JS QR libraries reading UTF-8 bytes)
+      try {
+        let isGarbled = false;
+        const bytes = new Uint8Array(value.length);
+        for (let j = 0; j < value.length; j++) {
+          const code = value.charCodeAt(j);
+          if (code > 255) {
+             isGarbled = false;
+             break;
+          }
+          bytes[j] = code;
+          if (code > 127) isGarbled = true;
+        }
+        if (isGarbled) {
+          const decoder = new TextDecoder("utf-8");
+          value = decoder.decode(bytes);
+        }
+      } catch (e) {}
+
       result[tag] = value;
       i += 4 + length;
     }
   } catch (e) {
-    // Original fallback
-    let i = 0;
-    while (i < str.length) {
-      const tag = str.substring(i, i + 2);
-      const length = parseInt(str.substring(i + 2, i + 4));
-      const value = str.substring(i + 4, i + 4 + length);
-      result[tag] = value;
-      i += 4 + length;
-    }
+    console.error("parseEMV Error", e);
   }
+  
   return result;
 }
 

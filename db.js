@@ -1,4 +1,3 @@
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
@@ -95,6 +94,18 @@ async function initPostgres() {
       VALUES ('admin-1', 'USD', 0, '123456789')
       ON CONFLICT (user_id, currency) DO NOTHING
     `);
+    // Update existing accounts to 9 digits if they have 'USD' or 'KHR' prefixes or wrong length
+    console.log('Ensuring 9-digit accounts in PostgreSQL...');
+    const { rows: pAccounts } = await pgPool.query("SELECT user_id, currency FROM accounts WHERE length(account_no) != 9 OR account_no !~ '^[0-9]+$'");
+    if (pAccounts.length > 0) {
+      await pgPool.query('BEGIN');
+      for (const acc of pAccounts) {
+        const random9 = Math.floor(100000000 + Math.random() * 900000000).toString();
+        await pgPool.query("UPDATE accounts SET account_no = $1 WHERE user_id = $2 AND currency = $3", [random9, acc.user_id, acc.currency]);
+      }
+      await pgPool.query('COMMIT');
+    }
+
     console.log('PostgreSQL admin seed completed.');
   } catch (err) {
     console.error('Error initializing PostgreSQL database:', err);
@@ -208,6 +219,23 @@ if (!isPostgres && db) {
           if (firstUser) {
             db.prepare('INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
                   .run('phone-and-pin-enforcement-v2', firstUser.id, 0, 'plus', 0, 0, 'Enforced phone and pin seeds for admin', 'USD');
+          }
+        }
+
+        if (checkTx('nine-digit-account-migration') === 0) {
+          const accounts = db.prepare("SELECT user_id, currency, account_no FROM accounts WHERE length(account_no) != 9 OR account_no GLOB '*[^0-9]*'").all();
+          if (accounts.length > 0) {
+            const updateStmt = db.prepare("UPDATE accounts SET account_no = ? WHERE user_id = ? AND currency = ?");
+            for (const acc of accounts) {
+              const random9 = Math.floor(100000000 + Math.random() * 900000000).toString();
+              updateStmt.run(random9, acc.user_id, acc.currency);
+            }
+          }
+          
+          const firstUser = db.prepare('SELECT id FROM users LIMIT 1').get();
+          if (firstUser) {
+            db.prepare('INSERT INTO transactions (id, user_id, amount, type, balance_before, balance_after, note, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                  .run('nine-digit-account-migration', firstUser.id, 0, 'plus', 0, 0, 'Migrated all accounts to 9-digit format', 'USD');
           }
         }
       } catch (err) {

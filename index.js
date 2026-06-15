@@ -1,4 +1,3 @@
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -215,7 +214,7 @@ async function initializeApp() {
       }
       if (statusRows[0].is_locked) {
         await client.query('ROLLBACK');
-        return res.status(403).json({ success: false, error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.' });
+        return res.status(403).json({ success: false, error: 'Your account has been locked. Please contact the Admin.' });
       }
 
       // Verify PIN
@@ -449,7 +448,7 @@ async function initializeApp() {
 
         const { rows: fullUserRows } = await db.query('SELECT id, name, phone, email, role, is_locked FROM users WHERE id = $1', [user.id]);
         if (fullUserRows[0].is_locked) {
-          return res.status(403).json({ ok: false, error: 'Tài khoản đã bị khóa.' });
+          return res.status(403).json({ ok: false, error: 'Account has been locked.' });
         }
         res.json({ ok: true, user: fullUserRows[0] });
       } else {
@@ -463,34 +462,102 @@ async function initializeApp() {
 
   app.post('/api/auth/register-instant', async (req, res) => {
     const { phone, pin } = req.body;
-    if (!phone || !pin) return res.status(400).json({ ok: false, error: 'Phone and PIN are required' });
+    if (!phone || !pin) {
+      return res.status(400).json({ ok: false, error: 'Phone and PIN are required' });
+    }
+
+    let client = null;
 
     try {
-      const { rows: phoneCheck } = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
-      if (phoneCheck.length > 0) return res.status(400).json({ ok: false, error: 'Phone number already registered' });
-
-      const { rows: pinCheck } = await db.query('SELECT id FROM users WHERE pin = $1', [pin]);
-      if (pinCheck.length > 0) return res.status(400).json({ ok: false, error: 'PIN already in use, choose another' });
-
+      const email = `${phone}@ababank.com`;
       const newId = 'user-' + Date.now();
       const randomName = CAMBODIAN_NAMES[Math.floor(Math.random() * CAMBODIAN_NAMES.length)];
-      await db.query(
-        'INSERT INTO users (id, name, phone, email, pin, role) VALUES ($1, $2, $3, $4, $5, $6)',
-        [newId, randomName, phone, phone + '@ababank.com', pin, 'user']
+      
+      const usdNo = Math.floor(100000000 + Math.random() * 900000000).toString();
+      const khrNo = Math.floor(100000000 + Math.random() * 900000000).toString();
+
+      if (db.getClient) {
+        client = await db.getClient();
+        if (client.begin) await client.begin();
+      }
+
+      const q = client || db;
+
+      const { rows: phoneCheck } = await q.query(
+        'SELECT id FROM users WHERE phone = $1 LIMIT 1',
+        [phone]
       );
-      
-      await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [newId, 'USD', 0, 'USD' + Date.now()]);
-      await db.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [newId, 'KHR', 0, 'KHR' + Date.now()]);
-      
-      const { rows: newUserRows } = await db.query('SELECT id, name, phone, email, role, is_locked FROM users WHERE id = $1', [newId]);
-      
+      if (phoneCheck.length > 0) {
+        if (client && client.rollback) await client.rollback();
+        if (client && client.release) client.release();
+        return res.status(400).json({ ok: false, error: 'Phone number already registered' });
+      }
+
+      const { rows: emailCheck } = await q.query(
+        'SELECT id FROM users WHERE email = $1 LIMIT 1',
+        [email]
+      );
+      if (emailCheck.length > 0) {
+        if (client && client.rollback) await client.rollback();
+        if (client && client.release) client.release();
+        return res.status(400).json({ ok: false, error: 'Email already registered' });
+      }
+
+      const { rows: pinCheck } = await q.query(
+        'SELECT id FROM users WHERE pin = $1 LIMIT 1',
+        [pin]
+      );
+      if (pinCheck.length > 0) {
+        if (client && client.rollback) await client.rollback();
+        if (client && client.release) client.release();
+        return res.status(400).json({ ok: false, error: 'PIN already in use, choose another' });
+      }
+
+      await q.query(
+        'INSERT INTO users (id, name, phone, email, pin, role, is_locked) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [newId, randomName, phone, email, pin, 'user', 0]
+      );
+
+      await q.query(
+        'INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)',
+        [newId, 'USD', 0, usdNo]
+      );
+
+      await q.query(
+        'INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)',
+        [newId, 'KHR', 0, khrNo]
+      );
+
+      const { rows: newUserRows } = await q.query(
+        'SELECT id, name, phone, email, role, is_locked FROM users WHERE id = $1',
+        [newId]
+      );
+
+      if (client && client.commit) await client.commit();
+      if (client && client.release) client.release();
+
       if (io) {
         io.to('admin').emit('new_user_registered', { user: newUserRows[0] });
       }
-      
-      res.json({ ok: true, user: newUserRows[0] });
+
+      return res.json({ ok: true, user: newUserRows[0], accounts: { USD: usdNo, KHR: khrNo } });
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'Server error' });
+      if (client && client.rollback) {
+        try { await client.rollback(); } catch (_) {}
+      }
+      if (client && client.release) client.release();
+
+      console.error('register-instant error:', err);
+
+      if (err.code === '23505') {
+        return res.status(400).json({ ok: false, error: 'Duplicate user data. Please try another phone or PIN.' });
+      }
+
+      return res.status(500).json({
+        ok: false,
+        error: 'Server error',
+        detail: process.env.NODE_ENV !== 'production' ? err.message : undefined
+      });
     }
   });
 
@@ -517,7 +584,7 @@ async function initializeApp() {
       const { rows } = await db.query('SELECT id, name, phone, email, role, is_locked FROM users WHERE phone = $1 AND pin = $2', [phone, pin]);
       if (rows.length) {
         if (rows[0].is_locked) {
-          return res.status(403).json({ ok: false, error: 'Tài khoản đã bị khóa.' });
+          return res.status(403).json({ ok: false, error: 'Account has been locked.' });
         }
         res.json({ ok: true, user: rows[0] });
       } else {
@@ -553,7 +620,7 @@ async function initializeApp() {
       const { rows } = await db.query(queryText, queryParams);
       if (rows.length) {
         if (rows[0].is_locked) {
-          return res.status(403).json({ ok: false, error: 'Tài khoản đã bị khóa. Vui lòng liên hệ Admin.' });
+          return res.status(403).json({ ok: false, error: 'Your account has been locked. Please contact the Admin.' });
         }
         // In a real app, use sessions or JWT. For this demo, we'll return user info.
         res.json({ ok: true, user: rows[0] });
@@ -575,7 +642,7 @@ async function initializeApp() {
       const { rows } = await db.query('SELECT id, name, email, role, is_locked FROM users WHERE name = $1', [userName]);
       if (rows.length) {
         if (rows[0].is_locked) {
-          return res.status(403).json({ ok: false, error: 'Tài khoản đã bị khóa. Vui lòng liên hệ Admin.' });
+          return res.status(403).json({ ok: false, error: 'Your account has been locked. Please contact the Admin.' });
         }
         res.json({ ok: true, user: rows[0] });
       } else {
@@ -745,6 +812,24 @@ async function initializeApp() {
     }
   });
 
+  app.get('/api/balance/:id', async (req, res) => {
+    const userId = req.params.id;
+    try {
+      const q = `SELECT currency, balance, account_no FROM accounts WHERE user_id = $1`;
+      const { rows } = await db.query(q, [userId]);
+      const balances = {};
+      const accountNumbers = {};
+      rows.forEach(r => {
+        balances[r.currency] = parseFloat(r.balance);
+        accountNumbers[r.currency] = r.account_no;
+      });
+      res.json({ ok: true, balances, accountNumbers });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: 'Server error' });
+    }
+  });
+
   app.get('/api/user/:id', async (req, res) => {
     const userId = req.params.id;
     try {
@@ -774,8 +859,10 @@ async function initializeApp() {
       const userQ = 'INSERT INTO users (id, name, email) VALUES ($1, $2, $3)';
       await client.query(userQ, [userId, name, email]);
       
-      await client.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [userId, 'USD', 0, 'USD' + Date.now()]);
-      await client.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [userId, 'KHR', 0, 'KHR' + Date.now()]);
+      const usdNo = Math.floor(100000000 + Math.random() * 900000000).toString();
+      const khrNo = Math.floor(100000000 + Math.random() * 900000000).toString();
+      await client.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [userId, 'USD', 0, usdNo]);
+      await client.query('INSERT INTO accounts (user_id, currency, balance, account_no) VALUES ($1, $2, $3, $4)', [userId, 'KHR', 0, khrNo]);
       
       await client.query('COMMIT');
       if (io) {
