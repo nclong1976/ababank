@@ -2,13 +2,13 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": "*(schema.sql|dev.db)"
+      "includeFiles": "schema.sql"
     },
     "api/upload-images.js": {
       "maxDuration": 30
     },
     "api/avatar.js": {
-      "includeFiles": "*(schema.sql|dev.db)"
+      "includeFiles": "schema.sql"
     },
     "api/blob-upload.js": {
       "maxDuration": 30
