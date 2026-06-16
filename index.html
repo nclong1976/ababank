@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>ABA Mobile Remix</title>
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#005c7a" />
@@ -17,18 +17,18 @@
         console.log('--- ULTIMATE FETCH FIX ---');
         try {
           const originalFetch = window.fetch;
-          
+
           function applyFix(target) {
             try {
               const desc = Object.getOwnPropertyDescriptor(target, 'fetch');
               if (desc && !desc.configurable) return false;
-              
+
               let currentFetch = originalFetch;
               Object.defineProperty(target, 'fetch', {
                 get: function() { return currentFetch; },
-                set: function(v) { 
+                set: function(v) {
                   console.log('Fetch overwritten safely');
-                  currentFetch = v; 
+                  currentFetch = v;
                 },
                 configurable: true,
                 enumerable: true
@@ -39,15 +39,14 @@
             }
           }
 
-          // Try to define it directly on window first. 
-          // If fetch is a getter on the prototype, defining it on window (the instance) 
+          // Try to define it directly on window first.
+          // If fetch is a getter on the prototype, defining it on window (the instance)
           // will shadow the prototype getter and allow assignments.
           if (!applyFix(window)) {
             // Fallback to prototype if window definition failed for some reason
             const proto = Object.getPrototypeOf(window);
             if (proto) applyFix(proto);
           }
-          
           console.log('Ultimate fetch fix applied');
         } catch (e) {
           console.error('Ultimate fetch fix failed:', e);
@@ -71,10 +70,9 @@
         });
       }
     </script>
+    <script type="module" src="/src/main.tsx"></script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
