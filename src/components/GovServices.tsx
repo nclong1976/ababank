@@ -50,7 +50,7 @@ export default function GovServices({ onBack }: GovServicesProps) {
       initial={{ opacity: 0, x: '100%' }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: '100%' }}
-      className="fixed inset-0 bg-white z-50 flex flex-col font-sans"
+                  className="absolute inset-0 bg-white z-50 flex flex-col font-sans"
     >
       {/* Header */}
       <div className="relative h-64 overflow-hidden shrink-0">
