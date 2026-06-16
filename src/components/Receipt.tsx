@@ -154,7 +154,7 @@ export default function Receipt({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed inset-0 z-50 bg-[#003b5c] flex flex-col font-sans overflow-hidden select-none"
+                  className="absolute inset-0 z-50 bg-[#003b5c] flex flex-col font-sans overflow-hidden select-none"
     >
       {/* iOS-style Push Notification */}
       <AnimatePresence>
