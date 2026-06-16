@@ -933,6 +933,7 @@ export default function App() {
 
   return (
     <AppProvider>
+            <div className="mobile-shell">
       <AnimatePresence mode="wait">
         {renderScreen()}
       </AnimatePresence>
@@ -960,6 +961,7 @@ export default function App() {
 
       {/* OS Navigation Indicator */}
       <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-white/40 rounded-full backdrop-blur-sm z-[60] pointer-events-none" />
-    </AppProvider>
+          </div>
+</AppProvider>
   );
 }
