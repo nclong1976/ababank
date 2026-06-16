@@ -148,7 +148,7 @@ export default function History({
       initial={{ opacity: 0, x: '100%' }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: '100%' }}
-      className="fixed inset-0 z-50 bg-[#011e29] flex flex-col font-sans overflow-hidden"
+            className="absolute inset-0 z-50 bg-[#011e29] flex flex-col font-sans overflow-hidden"
     >
       <StatusBar className="bg-[#011e29]" />
       <AnimatePresence>
@@ -306,7 +306,7 @@ export default function History({
       </div>
 
       {/* OS Navigation Indicator */}
-      <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-slate-400 rounded-full z-20 opacity-30" />
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-slate-400 rounded-full z-20 opacity-30" />
     </motion.div>
   );
 }
