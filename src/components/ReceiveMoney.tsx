@@ -75,7 +75,7 @@ export default function ReceiveMoney({ onBack, userName, accountNo, language, us
   }, [userId]);
 
   return (
-    <div className="min-h-screen bg-[#011a24] flex flex-col font-sans">
+            <div className="screen bg-[#011a24] flex flex-col font-sans">
       <StatusBar className="bg-[#011a24]" />
       {/* Header */}
       <header className="p-4 pt-2 flex items-center justify-between">
