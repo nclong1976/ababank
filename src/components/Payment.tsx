@@ -203,7 +203,7 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
   };
 
   if (isDone) {
-    return <Receipt txData={txData} recipientName={recipientName} amount={amount} currency={currency} remark={remark} isGift={isGift} onDone={onBack} />;
+    return <Receipt txData={txData} recipientName={recipientName} amount={amount} currency={currency} remark={remark} isGift={isGift} onBack={onBack} />;
   }
 
   return (
