@@ -14,7 +14,6 @@
 /* ============================================
    MOBILE-FIRST RESPONSIVE RESET
    ============================================ */
-
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -44,15 +43,15 @@ body {
   -webkit-touch-callout: none;
 }
 
-input, textarea {
+input,
+textarea {
   -webkit-user-select: auto;
   user-select: auto;
 }
 
 /* ============================================
-   APP SHELL — vừa gọn mọi thiết bị
+   APP SHELL
    ============================================ */
-
 #root {
   width: 100%;
   min-height: 100vh;
@@ -65,10 +64,9 @@ input, textarea {
 }
 
 /*
-  .mobile-shell — khung chứa toàn bộ app
-  - Dùng position: relative để các màn hình con
-    dùng absolute inset-0 bám đúng vào đây
-  - overflow: hidden giữ nội dung không tràn ra ngoài
+  .mobile-shell — khung chua toan bo app
+  - Safe area padding de xu ly notch / home indicator
+  - height: 100dvh de tranh iOS Safari bottom bar an mat phan duoi
 */
 .mobile-shell {
   width: 100%;
@@ -80,12 +78,13 @@ input, textarea {
   position: relative;
   overflow: hidden;
   background-color: var(--color-aba-dark);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
-/*
-  .screen — lớp phủ toàn khung cho các màn hình con
-  Thay thế cho fixed inset-0 cũ
-*/
+/* .screen — lop phu toan khung cho cac man hinh con */
 .screen {
   position: absolute;
   inset: 0;
@@ -100,8 +99,23 @@ input, textarea {
    RESPONSIVE BREAKPOINTS
    ============================================ */
 
-/* Small phones (< 375px) — iPhone SE, 4, 5 */
-@media (max-width: 374px) {
+/* Cuc nho (< 320px) — thiet bi rat cu */
+@media (max-width: 319px) {
+  .mobile-shell {
+    max-width: 100%;
+    font-size: 13px;
+  }
+  .icon-label {
+    font-size: 0.55rem;
+  }
+  .icon-btn {
+    min-width: 40px !important;
+    max-width: 60px !important;
+  }
+}
+
+/* Small phones (320px-374px) — iPhone SE 1st gen, 5 */
+@media (min-width: 320px) and (max-width: 374px) {
   .mobile-shell {
     max-width: 100%;
   }
@@ -114,14 +128,14 @@ input, textarea {
   }
 }
 
-/* Standard phones (375px–413px) — iPhone 7, 8, X, 11 */
+/* Standard phones (375px-413px) — iPhone 7, 8, X, 11, SE 2nd/3rd gen */
 @media (min-width: 375px) and (max-width: 413px) {
   .mobile-shell {
     max-width: 100%;
   }
 }
 
-/* Large phones (414px–479px) — iPhone Plus, Pro Max */
+/* Large phones (414px-479px) — iPhone 8 Plus, 11 Pro Max, 14 Plus */
 @media (min-width: 414px) and (max-width: 479px) {
   .mobile-shell {
     max-width: 100%;
@@ -136,7 +150,7 @@ input, textarea {
   }
 }
 
-/* Tablet / Desktop (768px+) */
+/* Tablet / Desktop (768px+) — phone frame giua man hinh */
 @media (min-width: 768px) {
   #root {
     background: #000d14;
@@ -150,29 +164,32 @@ input, textarea {
     border-radius: 40px;
     overflow: hidden;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+    /* Reset safe-area padding tren desktop */
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
 /* ============================================
    SAFE AREA (notch / home indicator)
+   Chi dung cho element dung position: fixed
+   nam NGOAI .mobile-shell (vi du overlay)
    ============================================ */
-
 .safe-padding-top {
-  padding-top: max(0.75rem, env(safe-area-inset-top)) !important;
+  padding-top: env(safe-area-inset-top) !important;
 }
-
 .safe-padding-bottom {
   padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
 }
-
 .safe-margin-top {
   margin-top: env(safe-area-inset-top);
 }
 
 /* ============================================
-   ICON GRID — tự động co giãn theo màn hình
+   ICON GRID
    ============================================ */
-
 .icon-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -211,7 +228,6 @@ input, textarea {
 /* ============================================
    GLOBAL RESPONSIVE HELPERS
    ============================================ */
-
 img {
   max-width: 100%;
   height: auto;
@@ -226,30 +242,26 @@ img {
 /* ============================================
    ANIMATIONS
    ============================================ */
-
 @keyframes ripple {
-  0%   { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
   100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
-
 .animate-ripple {
   animation: ripple 0.6s ease-out;
 }
 
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in-up {
   animation: fadeInUp 0.35s ease-out forwards;
 }
 
 @keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
-
 .animate-shimmer {
   background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
   background-size: 200% 100%;
@@ -259,7 +271,6 @@ img {
 /* ============================================
    SCROLLBAR UTILITIES
    ============================================ */
-
 @utility no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -271,7 +282,6 @@ img {
 /* ============================================
    LEGACY
    ============================================ */
-
 .send-again {
   position: absolute;
   left: 5.6%;
