@@ -142,7 +142,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 bg-black text-white flex flex-col"
+            className="absolute inset-0 z-50 bg-black text-white flex flex-col"
     >
       <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden">
         {/* Full-screen camera background */}
