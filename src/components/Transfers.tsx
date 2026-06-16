@@ -63,7 +63,7 @@ export default function Transfers({ onBack, onScanQR, onShowReceipt, currentUser
       initial={{ opacity: 0, x: '100%' }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: '100%' }}
-      className="fixed inset-0 z-50 bg-[#005977] flex flex-col font-sans"
+                  className="absolute inset-0 z-50 bg-[#005977] flex flex-col font-sans"
     >
       <AnimatePresence>
         {showBiometricPrompt && (
