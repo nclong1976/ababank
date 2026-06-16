@@ -54,7 +54,7 @@ export default function PaymentsHub({ onBack, userId }: PaymentsHubProps) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed inset-0 z-50 bg-[#f4f6f8] flex flex-col font-sans overflow-hidden"
+                  className="absolute inset-0 z-50 bg-[#f4f6f8] flex flex-col font-sans overflow-hidden"
     >
       {/* Header */}
       <header className="flex items-center justify-between p-4 pt-[env(safe-area-inset-top,40px)] sticky top-0 bg-[#005c7a] z-20 shadow-md">
