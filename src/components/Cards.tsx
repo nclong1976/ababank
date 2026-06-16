@@ -38,7 +38,7 @@ export default function Cards({ onBack }: CardsProps) {
       initial={{ opacity: 0, x: '100%' }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: '100%' }}
-      className="fixed inset-0 z-50 bg-[#f8f9fa] flex flex-col font-sans"
+            className="absolute inset-0 z-50 bg-[#f8f9fa] flex flex-col font-sans"
     >
       {/* Teal Top Section */}
       <div className="bg-[#005c6a] pt-10 pb-12 px-4 flex flex-col items-center">
