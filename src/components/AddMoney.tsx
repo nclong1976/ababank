@@ -54,7 +54,7 @@ export default function AddMoney({ onBack, userId }: AddMoneyProps) {
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed inset-0 bg-[#005566] text-white z-50 flex flex-col"
+                  className="absolute inset-0 bg-[#005566] text-white z-50 flex flex-col"
     >
       <div className="flex items-center px-4 py-4 bg-[#005566]">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
