@@ -23,27 +23,27 @@ import StatusBar from './components/StatusBar';
 
 // Custom icons to match ABA design more closely
 const CardsIcon = () => (
-  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Check_Balance.png" alt="Cards" className="w-[65px] h-[65px] -mt-[7px] object-contain" />
+  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Check_Balance.png" alt="Cards" className="w-[52px] h-[52px] -mt-[5px] object-contain" />
 );
 
 const ScanIcon = () => (
-  <img src="https://www.ababank.com/fileadmin/user_upload/Announcements/News/aba_analytics/icons/Via_QR.png" alt="ABA Scan" className="w-[65px] h-[65px] -mt-[7px] object-contain" />
+  <img src="https://www.ababank.com/fileadmin/user_upload/Announcements/News/aba_analytics/icons/Via_QR.png" alt="ABA Scan" className="w-[52px] h-[52px] -mt-[5px] object-contain" />
 );
 
 const PaymentsIcon = () => (
-  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Pay_Your_Bills.png" alt="Payments" className="w-[65px] h-[65px] -mt-[7px] object-contain" />
+  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Pay_Your_Bills.png" alt="Payments" className="w-[52px] h-[52px] -mt-[5px] object-contain" />
 );
 
 const TransfersIcon = () => (
-  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Send_Money_to_Anyone.png" alt="Transfers" className="w-[65px] h-[65px] -mt-[7px] object-contain" />
+  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Send_Money_to_Anyone.png" alt="Transfers" className="w-[52px] h-[52px] -mt-[5px] object-contain" />
 );
 
 const ECashIcon = () => (
-  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Cardless_Cash.png" alt="E-Cash" className="w-[65px] h-[65px] -mt-[7px] object-contain" />
+  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Cardless_Cash.png" alt="E-Cash" className="w-[52px] h-[52px] -mt-[5px] object-contain" />
 );
 
 const ServicesIcon = () => (
-  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Useful_Templates.png" alt="Useful" className="w-[65px] h-[65px] -mt-[7px] object-contain" />
+  <img src="https://www.ababank.com/fileadmin/user_upload/ABA_Mobile/Useful_Templates.png" alt="Useful" className="w-[52px] h-[52px] -mt-[5px] object-contain" />
 );
 
 const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
@@ -641,7 +641,7 @@ export default function App() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="min-h-screen bg-linear-to-b from-[#005c7a] via-[#003b4d] to-[#011a24] px-0 pt-0 pb-20 max-w-md mx-auto relative overflow-hidden font-sans"
+        className="bg-linear-to-b from-[#005c7a] via-[#003b4d] to-[#011a24] px-0 pt-0 pb-20 max-w-md mx-auto relative overflow-y-auto no-scrollbar font-sans"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -676,7 +676,7 @@ export default function App() {
         <motion.div
            animate={{ y: isRefreshing ? 20 : pullDistance > 0 ? pullDistance * 0.3 : 0 }}
            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-           className="w-full relative min-h-screen"
+           className="w-full relative"
         >
         {/* Decorative Blur */}
         <div className="absolute top-1/4 -left-20 w-64 h-64 bg-red-500/10 blur-[100px] rounded-full" />
@@ -814,7 +814,7 @@ export default function App() {
         </motion.div>
 
         {/* 3x3 Grid */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-2 px-4 mb-4">
           {mainGrid.map((item, index) => (
             <HapticButton
               key={index}
@@ -824,9 +824,9 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.05 }}
-              className="w-[110px] h-[110px] bg-white rounded-3xl flex flex-col items-center justify-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/50 backdrop-blur-sm mx-auto"
+              className="w-full h-[90px] bg-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/50 backdrop-blur-sm mx-auto"
             >
-              <div className="h-12 flex items-center justify-center">
+              <div className="h-10 flex items-center justify-center">
                 <item.icon />
               </div>
               <span className="text-[11px] font-bold text-[#003b4d] tracking-tight leading-[1.1] text-center px-1 font-sans">
