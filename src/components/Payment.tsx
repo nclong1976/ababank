@@ -1,13 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ChevronDown, 
-  Gift, 
-  X,
-  ArrowRight,
-  Info,
-  Fingerprint
-} from 'lucide-react';
+import { ChevronDown, Gift, X, ArrowRight, Info, Fingerprint } from 'lucide-react';
 import Receipt from './Receipt';
 import StatusBar from './StatusBar';
 import { parseKHQR } from '../lib/khqr';
@@ -43,12 +36,9 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
   const EXCHANGE_RATE = 4100;
 
   useEffect(() => {
-    // Check if biometric is enabled
     const biometricSaved = localStorage.getItem('biometric_enabled');
-    if (biometricSaved === 'true') {
-      setIsBiometricEnabled(true);
-    }
-    // Fetch balances
+    if (biometricSaved === 'true') setIsBiometricEnabled(true);
+
     fetch(`/api/balance/${currentUserId}`)
       .then(res => res.json())
       .then(data => {
@@ -63,10 +53,9 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
         setRecipientAccount(khqr.accountNo?.trim() || '');
         setRecipientName(khqr.name || 'Unknown Recipient');
         if (khqr.amount) setAmount(khqr.amount);
-        
         const targetCur = khqr.currency === '116' ? 'KHR' : 'USD';
         setCurrency(targetCur);
-        setSourceCurrency(targetCur); // Default to matching currency
+        setSourceCurrency(targetCur);
       } else {
         setRecipientName('EXTERNAL ACCOUNT');
       }
@@ -89,8 +78,6 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
   const toggleSourceCurrency = () => {
     const newCurrency = sourceCurrency === 'USD' ? 'KHR' : 'USD';
     setSourceCurrency(newCurrency);
-    
-    // Auto-conversion logic
     if (amount && parseFloat(amount) > 0) {
       const currentVal = parseFloat(amount);
       let converted: number;
@@ -122,7 +109,6 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
       if (key === 'back') {
         setAmount(prev => prev.slice(0, -1));
       } else if (key === '.') {
-        // BLOCKED FOR KHR
         if (currency === 'KHR') return;
         if (!amount.includes('.')) setAmount(prev => (prev === '' ? '0.' : prev + '.'));
       } else {
@@ -154,11 +140,10 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
   };
 
   const handleNext = () => {
-    console.log('handleNext clicked, recipientAccount:', recipientAccount);
     if (!amount || parseFloat(amount) <= 0 || !canAfford) return;
     if (!recipientAccount.trim()) {
-        alert('Invalid recipient. Please scan a valid QR code.');
-        return;
+      alert('Invalid recipient. Please scan a valid QR code.');
+      return;
     }
     setStep('pin');
     if (isBiometricEnabled) {
@@ -169,7 +154,6 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
   const handleBiometricAuth = async () => {
     setIsProcessing(true);
     setShowBiometricPrompt(false);
-    
     try {
       if ((window as any).ReactNativeWebView) {
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'BIOMETRIC_AUTH_REQUEST' }));
@@ -177,22 +161,14 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
       } else if (window.PublicKeyCredential) {
         const challenge = new Uint8Array(32);
         window.crypto.getRandomValues(challenge);
-        
         await navigator.credentials.get({
-          publicKey: {
-            challenge: challenge,
-            rpId: window.location.hostname,
-            userVerification: "preferred",
-            timeout: 60000
-          }
+          publicKey: { challenge, rpId: window.location.hostname, userVerification: "preferred", timeout: 60000 }
         });
       } else {
         await new Promise(r => setTimeout(r, 1000));
       }
-      
       handleFinalConfirm('biometric', recipientAccount);
     } catch (err) {
-      console.error('Biometric error:', err);
       alert('Biometric verification failed');
       setIsProcessing(false);
       setPin('');
@@ -210,274 +186,117 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
           receiverAccountNo: recipient,
           receiverName: recipientName,
           amount: parseFloat(amount),
-          sourceCurrency: sourceCurrency,
+          sourceCurrency,
           targetCurrency: currency,
           pin: submittedPin
         }),
       });
-
       const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Transaction failed');
-      }
-      
+      if (!data.success) throw new Error(data.error || 'Transaction failed');
       setTxData({ id: data.transaction.id, createdAt: new Date(data.transaction.createdAt) });
       setIsDone(true);
     } catch (error) {
-      console.error('Error creating transaction:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      alert('Transaction failed: ' + errorMessage);
+      alert('Transaction failed: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsProcessing(false);
     }
   };
 
   if (isDone) {
-    return (
-      <Receipt 
-        amount={amount} 
-        currency={currency}
-        recipientName={recipientName} 
-        recipientAccount={recipientAccount}
-        senderName={currentUserName}
-        senderAccount={sourceAccountNo}
-        transactionId={txData?.id}
-        transactionDate={txData?.createdAt}
-        remainingBalance={availableBalance - currentDeductAmount}
-        onBack={onBack} 
-      />
-    );
+    return <Receipt txData={txData} recipientName={recipientName} amount={amount} currency={currency} remark={remark} isGift={isGift} onDone={onBack} />;
   }
 
   return (
-        <div className="screen bg-[#014151] font-sans select-none text-white">
-      <StatusBar className="bg-[#014151]" />
-      <AnimatePresence>
-        {showBiometricPrompt && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-[#003855]/90 backdrop-blur-md"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white text-black p-8 rounded-[2rem] flex flex-col items-center shadow-2xl max-w-[85vw] w-full max-w-sm"
-            >
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-6">
-                <Fingerprint className="w-8 h-8 text-[#00bcd4]" />
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col h-full bg-gradient-to-br from-[#005f73] to-[#0a9396] overflow-hidden">
+      <StatusBar />
+
+      {showBiometricPrompt && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 mx-6 max-w-sm w-full">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-3 bg-[#37a7b8]/10 rounded-full flex items-center justify-center">
+                <Fingerprint className="w-8 h-8 text-[#37a7b8]" />
               </div>
-              <h2 className="text-xl font-bold mb-2 tracking-tight text-[#003855]">Biometric Transfer</h2>
-              <p className="text-gray-500 font-medium text-sm text-center max-w-[200px] mb-8">
-                Confirm your face or fingerprint to authorize payment
-              </p>
-              
-              <div className="flex gap-3 w-full">
-                <button 
-                  onClick={() => setShowBiometricPrompt(false)}
-                  className="flex-1 py-3.5 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm active:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleBiometricAuth}
-                  className="flex-1 py-3.5 bg-[#00bcd4] rounded-xl font-bold text-white text-sm active:bg-[#009aba] transition-colors"
-                >
-                  Scan
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <h3 className="text-lg font-bold text-gray-800 mb-1">Biometric Transfer</h3>
+              <p className="text-sm text-gray-600 mb-4">Confirm your face or fingerprint to authorize payment</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowBiometricPrompt(false)} className="flex-1 py-3.5 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm active:bg-gray-200">Cancel</button>
+              <button onClick={handleBiometricAuth} className="flex-1 py-3.5 bg-[#37a7b8] rounded-xl font-bold text-white text-sm"><Fingerprint className="w-5 h-5 mx-auto" />Scan</button>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
-      {/* Background Decor */}
-      <div className="absolute top-[-100px] right-[-100px] w-80 h-80 rounded-full border-[30px] border-white/5 pointer-events-none" />
-      <div className="absolute top-[-50px] right-[-50px] w-60 h-60 rounded-full border-[20px] border-white/5 pointer-events-none" />
+      <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
-      {/* Header */}
-      <header className="p-4 pt-2 flex items-center justify-between z-10">
-        <button onClick={step === 'pin' ? () => setStep('input') : onBack} className="p-2 transition-transform active:scale-90">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-7 h-7">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
-        <h1 className="font-bold text-xl tracking-tight">ABA Scan</h1>
-        <button className="p-2 opacity-50">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-             <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
-          </svg>
-        </button>
-      </header>
+      <div className="relative flex items-center justify-between px-4 py-2 safe-top">
+        <button onClick={step === 'pin' ? () => setStep('input') : onBack} className="p-2 transition-transform active:scale-90"><X className="w-5 h-5 text-white" /></button>
+        <h1 className="text-lg font-bold text-white">ABA Scan</h1>
+        <div className="w-9" />
+      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center px-6 pt-4 overflow-y-auto no-scrollbar z-10">
+      <div className="flex-1 flex flex-col px-4 pb-2 overflow-hidden">
         {step === 'input' ? (
           <>
-            {/* Recipient Identity */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center mb-8"
-            >
-              <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center p-1 mb-4 shadow-xl">
-                 <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-[#217d8a] text-3xl font-black">
-                   {getInitials(recipientName)}
-                 </div>
+            <div className="flex flex-col items-center mb-2">
+              <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mb-1.5">
+                <span className="text-white font-bold text-sm">{getInitials(recipientName)}</span>
               </div>
-              <h2 className="font-black text-xl tracking-wider uppercase text-center">{recipientName}</h2>
-            </motion.div>
-
-            {/* Central Amount Display */}
-            <div className="flex flex-col items-center mb-10 w-full">
-              <div className="flex items-center justify-center gap-3">
-                <AnimatePresence mode="wait">
-                  <motion.span 
-                    key={currency + amount}
-                    initial={{ opacity: 0.5, filter: 'blur(4px)' }}
-                    animate={{ opacity: 1, filter: 'blur(0px)' }}
-                    className="text-white font-black text-[64px] leading-none tracking-tighter"
-                  >
-                    {amount || '0'}
-                  </motion.span>
-                </AnimatePresence>
-                <div className="px-3 py-1 bg-[#37a7b8] rounded-lg text-white font-black text-sm shadow-lg shadow-[#37a7b8]/20 transition-all">
-                  {currency}
-                </div>
-              </div>
-              
-              {/* Source Account Selector (Show balance) */}
-              <button 
-                onClick={toggleSourceCurrency}
-                className="mt-8 flex flex-col items-center gap-1 group active:opacity-70 transition-all"
-              >
-                <div className="flex items-center gap-2 text-white/80">
-                  <span className="text-sm font-sans text-white/50">Pay from:</span>
-                  <span className="text-sm font-bold tracking-tight">{sourceAccountNo} | {sourceCurrency}</span>
-                  <ChevronDown className="w-5 h-5 text-[#37a7b8] group-active:translate-y-0.5 transition-transform" />
-                </div>
-                <p className="text-[10px] font-bold text-[#8cc63f] opacity-80">
-                  Balance: {sourceCurrency === 'USD' ? '$' : ''}{balances[sourceCurrency]?.toLocaleString()}{sourceCurrency === 'KHR' ? ' ៛' : ''}
-                </p>
-              </button>
+              <h2 className="text-white font-bold text-sm text-center max-w-[240px] truncate">{recipientName}</h2>
             </div>
 
-            <div className="w-full space-y-4">
-              <p className="text-xs font-bold text-white/40 font-sans uppercase tracking-widest px-2">Note:</p>
-              <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
-                <button 
-                  onClick={() => setIsGift(!isGift)}
-                  className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full border-2 transition-all font-khmer font-bold text-sm ${
-                    isGift ? 'bg-[#ff5252] border-[#ff5252] text-white shadow-lg' : 'border-white/20 text-white/80'
-                  }`}
-                >
-                  <Gift className="w-4 h-4" />
-                  Gift
-                </button>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <span className="text-white text-5xl font-bold tracking-tight">{amount || '0'}</span>
+              <button onClick={toggleSourceCurrency} className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-bold active:bg-white/30">{currency}</button>
+            </div>
+
+            <div className="flex flex-col items-center gap-0.5 mb-2 text-white/80 text-xs">
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Pay from:</span>
+                <span className="font-bold">{sourceAccountNo} | {sourceCurrency}</span>
+              </div>
+              <div>
+                <span>Balance: </span>
+                <span className="font-bold">{sourceCurrency === 'USD' ? '$' : ''}{balances[sourceCurrency]?.toLocaleString()}{sourceCurrency === 'KHR' ? ' ៛' : ''}</span>
+              </div>
+            </div>
+
+            <div className="mb-2">
+              <div className="text-white/70 text-xs font-medium mb-1 text-center">Note:</div>
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar justify-center">
+                <button onClick={() => setIsGift(!isGift)} className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all font-bold text-xs ${isGift ? 'bg-[#ff5252] border-[#ff5252] text-white' : 'border-white/20 text-white/70'}`}><Gift className="w-3 h-3" />Gift</button>
                 {remarks.filter(r => r !== 'Rent').map(r => (
-                  <button
-                    key={r}
-                    onClick={() => setRemark(r)}
-                    className={`flex-shrink-0 px-6 py-2.5 rounded-full border-2 transition-all font-bold text-sm ${
-                      remark === r 
-                        ? 'bg-[#37a7b8] border-[#37a7b8] text-white' 
-                        : 'bg-transparent border-white/20 text-white/50 hover:border-white/40'
-                    }`}
-                  >
-                    {r}
-                  </button>
+                  <button key={r} onClick={() => setRemark(r)} className={`flex-shrink-0 px-4 py-1.5 rounded-full border transition-all font-bold text-xs ${remark === r ? 'bg-[#37a7b8] border-[#37a7b8] text-white' : 'bg-transparent border-white/20 text-white/60'}`}>{r}</button>
                 ))}
               </div>
-              
-              {/* Optional Remark Text Input */}
-              {remark && !remarks.includes(remark) && (
-                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="px-2">
-                   <p className="text-[#37a7b8] font-bold text-xs">"{remark}"</p>
-                </motion.div>
-              )}
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center w-full pt-8">
-            <h2 className="text-lg font-sans mb-12 text-center text-white/70 tracking-wide uppercase font-black">Enter 4-digit PIN</h2>
-            
-            <div className="flex gap-6 justify-center mb-16">
-              {[...Array(4)].map((_, i) => (
-                <div 
-                  key={i}
-                  className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${
-                    pin.length > i 
-                      ? 'bg-[#37a7b8] border-[#37a7b8] scale-125 shadow-[0_0_15px_rgba(55,167,184,0.6)]' 
-                      : 'bg-transparent border-white/40'
-                  }`}
-                />
-              ))}
+          <div className="flex flex-col items-center justify-center flex-1">
+            <h3 className="text-white text-base font-bold mb-3">Enter 4-digit PIN</h3>
+            <div className="flex gap-3 mb-4">
+              {[...Array(4)].map((_, i) => <div key={i} className={`w-3 h-3 rounded-full border-2 transition-all ${i < pin.length ? 'bg-[#37a7b8] border-[#37a7b8] scale-125' : 'bg-transparent border-white/40'}`} />)}
             </div>
-
-            {isProcessing ? (
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                className="w-10 h-10 border-4 border-[#37a7b8] border-t-transparent rounded-full"
-              />
-            ) : (
-              <button className="text-[#37a7b8] text-sm font-black tracking-widest font-sans uppercase hover:opacity-70 transition-opacity">Forgot PIN?</button>
-            )}
+            {isProcessing ? <div className="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin" /> : <button className="text-white/70 text-xs mt-2">Forgot PIN?</button>}
           </div>
         )}
-      </div>
 
-      {/* Custom Keypad - ABA Style */}
-      <div className="p-6 pb-12 z-10">
-        <div className="grid grid-cols-3 gap-y-4 gap-x-8 mb-8">
+        <div className="grid grid-cols-3 gap-2 mb-2">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9', step === 'pin' && isBiometricEnabled ? 'biometric' : '.', '0', 'back'].map((key, idx) => (
-            <motion.button
-              key={idx}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => handleKeyPress(key)}
-              className={`h-14 flex items-center justify-center text-white text-3xl font-medium active:bg-white/5 rounded-full transition-colors disabled:opacity-30`}
-              disabled={step === 'pin' && (key === '.' || isProcessing)}
-            >
-              {key === 'back' ? (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-8 h-8 opacity-70">
-                  <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
-                  <line x1="18" y1="9" x2="12" y2="15" />
-                  <line x1="12" y1="9" x2="18" y2="15" />
-                </svg>
-              ) : key === 'biometric' ? (
-                 <Fingerprint className="w-8 h-8 opacity-80 text-[#37a7b8]" />
-              ) : key === '.' ? (
-                <div className="w-2 h-2 bg-white/70 rounded-full" />
-              ) : key}
-            </motion.button>
+            <button key={idx} onClick={() => handleKeyPress(key)} className="h-11 flex items-center justify-center text-white text-2xl font-medium active:bg-white/5 rounded-full transition-colors disabled:opacity-30" disabled={step === 'pin' && (key === '.' || isProcessing)}>
+              {key === 'back' ? <X className="w-5 h-5" /> : key === 'biometric' ? <Fingerprint className="w-5 h-5" /> : key === '.' ? <div className="w-1.5 h-1.5 bg-white rounded-full" /> : key}
+            </button>
           ))}
         </div>
 
         {step === 'input' && (
-          <motion.button 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleNext}
-            disabled={!amount || parseFloat(amount) <= 0 || !canAfford}
-            className={`w-full py-5 rounded-[22px] flex items-center justify-center gap-3 font-black text-xl transition-all font-khmer shadow-2xl uppercase tracking-tighter ${
-              !amount || parseFloat(amount) <= 0 || !canAfford
-                ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5' 
-                : 'bg-[#ff5252] text-white shadow-[#ff5252]/20'
-            }`}
-          >
-            NEXT
-          </motion.button>
+          <button onClick={handleNext} disabled={!amount || parseFloat(amount) <= 0 || !canAfford} className="w-full bg-[#ff5252] text-white font-bold py-3 rounded-full active:bg-[#e04848] transition-colors disabled:opacity-40 safe-bottom">NEXT</button>
         )}
       </div>
 
-      {/* OS Indicator */}
-      <div className="pb-1 flex justify-center z-10">
-        <div className="w-28 h-1.5 bg-white/5 rounded-full" />
-      </div>
-    </div>
+      <div className="h-1 bg-white/10 mx-auto w-32 rounded-full mb-1" />
+    </motion.div>
   );
 }
-
