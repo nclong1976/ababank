@@ -641,7 +641,7 @@ export default function App() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="bg-linear-to-b from-[#005c7a] via-[#003b4d] to-[#011a24] px-0 pt-0 pb-20 max-w-md mx-auto relative overflow-y-auto no-scrollbar font-sans"
+        className="home-screen bg-linear-to-b from-[#005c7a] via-[#003b4d] to-[#011a24] px-0 pt-0 pb-20 max-w-md mx-auto relative overflow-y-auto no-scrollbar font-sans"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
