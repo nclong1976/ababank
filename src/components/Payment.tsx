@@ -250,7 +250,7 @@ export default function Payment({ scannedData, onBack, currentUserId, currentUse
   }
 
   return (
-    <div className="min-h-screen bg-[#014151] flex flex-col font-sans select-none overflow-hidden text-white relative">
+        <div className="screen bg-[#014151] font-sans select-none text-white">
       <StatusBar className="bg-[#014151]" />
       <AnimatePresence>
         {showBiometricPrompt && (
