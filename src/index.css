@@ -289,3 +289,15 @@ img {
   top: 14.53%;
   bottom: 70.32%;
 }
+
+
+/* ============================================
+   OVERLAY FIXED — safe-area cho cac overlay
+   dung position: fixed nam ngoai .mobile-shell
+   ============================================ */
+.overlay-fixed {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
