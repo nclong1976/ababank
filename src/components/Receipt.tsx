@@ -309,7 +309,7 @@ export default function Receipt({
               <Row label="Trx." value={trxId} />
               <Row label="Transaction date:" value={displayDate} />
               <Row label="From account:" value={resolvedSenderAccount} />
-              <Row label="To account:" value={resolvedRecipientAccount} />
+              <Row label=":" value={resolvedRecipientAccount} />
               {note ? <Row label="Note:" value={note} /> : null}
               <Row label="Amount:" value={`${formattedAmountVal} ${resolvedCurrency}`} strong />
             </div>
