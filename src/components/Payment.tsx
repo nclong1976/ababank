@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Gift, X, Fingerprint, Delete, ShieldLock } from 'lucide-react';
+import { Gift, X, Fingerprint, Delete, ShieldCheck } from 'lucide-react';
 import Receipt from './Receipt';
 import StatusBar from './StatusBar';
 import { parseKHQR } from '../lib/khqr';
@@ -502,7 +502,7 @@ export default function Payment({
           ) : (
             <section className="flex min-h-0 flex-1 flex-col items-center justify-center px-2 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/14 backdrop-blur-sm">
-                <ShieldLock className="h-8 w-8" />
+                <ShieldCheck className="h-8 w-8" />
               </div>
 
               <h2 className="text-[18px] font-bold leading-tight">
