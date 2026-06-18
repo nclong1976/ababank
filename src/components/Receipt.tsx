@@ -348,7 +348,7 @@ export default function Receipt({
           onClick={() => onBack()}
           className="w-full max-w-[420px] mx-auto block bg-[#f44336] text-white py-3.5 sm:py-4 rounded-[14px] text-[14px] sm:text-[15px] font-bold tracking-wider uppercase active:opacity-90 transition-opacity shadow-lg"
         >
-          HOÀN THÀNH
+          DONE
         </button>
       </div>
     </motion.div>
