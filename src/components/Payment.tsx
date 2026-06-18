@@ -577,13 +577,13 @@ export default function Payment({
               <button
                 onClick={handleNext}
                 disabled={!amount || parseFloat(amount) <= 0 || !canAfford}
-                className="mt-3 min-h-[52px] w-full rounded-[18px] bg-[#ff5252] px-4 text-sm font-bold tracking-[0.03em] text-white transition active:scale-[0.99] active:bg-[#e04848] disabled:opacity-45"
+                className="mt-4 min-h-[58px] w-full rounded-[22px] bg-gradient-to-r from-[#00bcd4] to-[#0097a7] px-6 text-base font-black tracking-[0.06em] text-white shadow-[0_6px_32px_rgba(0,188,212,0.35)] transition-all active:scale-[0.97] active:shadow-none disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 CONTINUE
               </button>
             ) : null}
 
-            <div className="mx-auto mt-3 h-1 w-28 rounded-full bg-white/12" />
+            <div className="mx-auto mt-4 h-1 w-28 rounded-full bg-white/12" />
           </section>
         </main>
       </div>
