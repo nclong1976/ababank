@@ -1,234 +1,124 @@
-import React, { useState, useRef, useEffect } from 'react';
-import jsQR from 'jsqr';
-import { ChevronLeft, Image as ImageIcon } from 'lucide-react';
-import { motion } from 'motion/react';
+<!DOCTYPE html>
 
-interface ScannerProps {
-  onScan: (data: string) => void;
-  onClose: () => void;
-}
-
-export default function Scanner({ onScan, onClose }: ScannerProps) {
-  const [error, setError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const requestRef = useRef<number>(0);
-
-  const handleScan = (result: string) => {
-    if (result && result.length > 5) { 
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50);
+<html lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ABA Mobile QR Scan</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'aba-dark': '#002636',
+            'aba-header': '#005f73',
+            'aba-green': '#a4c639',
+            'surface': '#111415',
+            'surface-container-low': '#191c1d',
+          },
+          fontFamily: {
+            sans: ['Manrope', 'sans-serif'],
+          }
+        }
       }
-      onScan(result);
     }
-  };
-
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-    let mounted = true;
-
-    const startCamera = async () => {
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        });
-        
-        if (!mounted) {
-          mediaStream.getTracks().forEach(track => track.stop());
-          return;
-        }
-
-        stream = mediaStream;
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.setAttribute("playsinline", "true"); 
-          try {
-            await videoRef.current.play();
-            if (mounted) {
-              requestRef.current = requestAnimationFrame(tick);
-            }
-          } catch (playErr: any) {
-            // AbortError is common if the component unmounts quickly or video is paused
-            if (playErr.name !== 'AbortError') {
-              console.error('Video play error:', playErr);
-            }
-          }
-        }
-      } catch (err: any) {
-        if (!mounted) return;
-        console.error('Camera access error:', err);
-        const errMsg = err.message || String(err);
-        if (errMsg.includes('Permission denied') || errMsg.includes('NotAllowedError')) {
-          setError('Camera access permission denied.');
-        } else if (errMsg.includes('AbortError')) {
-          // Silent failure for AbortError as it's usually just a component unmount
-          console.log('Camera request was aborted');
-        } else {
-          setError('Unable to open camera: ' + errMsg);
-        }
-      }
-    };
-
-    const tick = () => {
-      if (!mounted) return;
-
-      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        if (canvas) {
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            canvas.height = video.videoHeight;
-            canvas.width = video.videoWidth;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: "dontInvert",
-            });
-            if (code) {
-              handleScan(code.data);
-            }
-          }
-        }
-      }
-      requestRef.current = requestAnimationFrame(tick);
-    };
-
-    startCamera();
-
-    return () => {
-      mounted = false;
-      cancelAnimationFrame(requestRef.current);
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
-
-  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height);
-            if (code) {
-              handleScan(code.data);
-            } else {
-              // Fallback for demo if scanning fails
-              handleScan("00020101021238580015kh.com.ababank01090086611020208SO DAWIN5204000053038405406100.005802KH5908ABA Bank6010Phnom Penh6304ED1D");
-            }
-          }
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+  </script>
+<style data-purpose="custom-animations">
+    @keyframes scanline {
+      0% { top: 0%; }
+      50% { top: 100%; }
+      100% { top: 0%; }
     }
-  };
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.98 }}
-      transition={{ duration: 0.2 }}
-            className="absolute inset-0 z-50 bg-black text-white flex flex-col"
-    >
-      <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden">
-        {/* Full-screen camera background */}
-        <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" />
-        <canvas ref={canvasRef} className="hidden" />
-        
-        {error ? (
-          <div className="absolute inset-0 z-40 bg-black flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-8">
-              <ImageIcon className="w-12 h-12 text-[#00bcd4]" />
-            </div>
-            <h2 className="text-2xl font-bold mb-3">Camera Error</h2>
-            <p className="text-white/60 text-sm mb-10 max-w-xs leading-relaxed">
-              {error}
-            </p>
-            <div className="flex flex-col gap-3 w-full max-w-[240px]">
-              <button 
-                onClick={() => window.location.reload()}
-                className="w-full py-4 bg-[#00bcd4] rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition-all text-white"
-              >
-                Retry
-              </button>
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-4 bg-white/10 text-white rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition-all"
-              >
-                Choose from Gallery
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-10">
-            {/* The Scanning frame area */}
-            <div 
-              style={{ boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.65)' }} 
-              className="w-[280px] h-[280px] rounded-[30px] relative pointer-events-auto"
-            >
-                {/* Corner markers */}
-                <div className="absolute top-0 left-0 w-12 h-12 border-t-[5px] border-l-[5px] rounded-tl-[30px] border-[#00bcd4]"></div>
-                <div className="absolute top-0 right-0 w-12 h-12 border-t-[5px] border-r-[5px] rounded-tr-[30px] border-[#00bcd4]"></div>
-                <div className="absolute bottom-0 left-0 w-12 h-12 border-b-[5px] border-l-[5px] rounded-bl-[30px] border-[#00bcd4]"></div>
-                <div className="absolute bottom-0 right-0 w-12 h-12 border-b-[5px] border-r-[5px] rounded-br-[30px] border-[#00bcd4]"></div>
-
-                {/* Animated scan line */}
-                <motion.div 
-                   animate={{ top: ['0%', '100%', '0%'] }}
-                   transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
-                   className="absolute left-4 right-4 h-[2px] bg-[#00bcd4] rounded-full"
-                   style={{ boxShadow: '0 0 12px 3px rgba(0, 188, 212, 0.6)' }}
-                />
-            </div>
-            
-            <p className="mt-8 text-white font-sans text-[15px] font-medium px-6 text-center tracking-wide pointer-events-none z-20">
-              Align QR Code within the frame
-            </p>
-          </div>
-        )}
-      </div>
-      
-      <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4 pt-[env(safe-area-inset-top,40px)] bg-gradient-to-b from-black/80 to-transparent">
-        <button onClick={onClose} className="p-2 -ml-2 rounded-full bg-black/20 hover:bg-white/10 active:scale-95 text-white backdrop-blur-md transition-all">
-          <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
-        </button>
-        <h1 className="text-[18px] font-bold font-sans text-white tracking-wide">Scan QR</h1>
-        <div className="w-10"></div>
-      </header>
-
-      {!error && (
-        <div className="absolute bottom-[env(safe-area-inset-bottom,40px)] left-0 right-0 z-20 flex justify-center items-center pb-8">
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="flex flex-col items-center gap-2 group p-4 rounded-[24px] bg-black/40 backdrop-blur-lg border border-white/10 active:scale-95 transition-all w-[100px]"
-          >
-            <ImageIcon className="w-7 h-7 text-[#00bcd4]" />
-            <span className="text-white text-[12px] font-sans font-medium">Gallery</span>
-          </button>
-        </div>
-      )}
-
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={onFileChange} 
-        accept="image/*" 
-        className="hidden" 
-      />
-    </motion.div>
-  );
-}
+    .scan-line {
+      animation: scanline 3s linear infinite;
+    }
+  </style>
+</head>
+<body class="bg-aba-dark text-white font-sans antialiased h-screen w-full flex justify-center items-center overflow-hidden">
+<!-- BEGIN: Mobile Device Container -->
+<div class="relative w-full max-w-[400px] h-full max-h-[850px] bg-black overflow-hidden shadow-2xl flex flex-col">
+<!-- Simulated Camera Background -->
+<div class="absolute inset-0 bg-[#0a0a0a] z-0"></div>
+<!-- BEGIN: Header Section (Status Bar & Nav) -->
+<header class="absolute top-0 left-0 right-0 bg-black/40 backdrop-blur-sm w-full z-30 flex flex-col pt-2 pb-3 px-4 shadow-sm text-white">
+<!-- Status Bar Placeholder -->
+<div class="flex justify-between items-center text-xs font-semibold mb-4 text-white">
+<div class="flex space-x-1.5 items-center">
+<!-- Signal Icon -->
+<!-- Wifi Icon -->
+<!-- Battery Icon -->
+</div>
+</div>
+<!-- Navigation -->
+<nav class="flex items-center">
+<button class="mr-4 text-white hover:text-gray-200 transition-colors">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+</button>
+<h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
+          ABA' <span class="text-lg uppercase">Scan</span>
+</h1>
+</nav>
+</header>
+<!-- END: Header Section -->
+<!-- BEGIN: Main Content Area -->
+<main class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+<!-- Background Watermark -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] z-0">
+<span class="text-7xl font-bold tracking-widest whitespace-nowrap rotate-[-45deg]">ABA PAY</span>
+</div>
+<!-- BEGIN: Scanner Frame -->
+<div class="relative w-[280px] h-[280px] z-10 flex-shrink-0">
+<!-- Corner Brackets -->
+<div class="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-aba-green rounded-tl-sm"></div>
+<div class="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-aba-green rounded-tr-sm"></div>
+<div class="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-aba-green rounded-bl-sm"></div>
+<div class="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-aba-green rounded-br-sm"></div>
+<!-- Scanning Line -->
+<div class="absolute top-1/2 left-[-10%] right-[-10%] h-[2px] bg-aba-green shadow-[0_0_15px_3px_rgba(164,198,57,0.8)] scan-line z-20"></div>
+</div>
+<!-- END: Scanner Frame -->
+</main>
+<!-- END: Main Content Area -->
+<!-- BEGIN: Action & Footer Overlay -->
+<div class="absolute bottom-0 left-0 right-0 z-30 flex flex-col items-center pt-12 pb-8 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
+<!-- Action Buttons -->
+<div class="flex justify-center gap-16 mb-10 w-full px-6">
+<!-- Flash Button -->
+<button class="flex flex-col items-center group pointer-events-auto">
+<div class="w-12 h-12 rounded-full border border-gray-400 bg-black/40 backdrop-blur-sm flex items-center justify-center mb-2 group-active:bg-gray-800 transition-colors">
+<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs text-gray-200 font-medium">Flash</span>
+</button>
+<!-- Gallery Button -->
+<button class="flex flex-col items-center group pointer-events-auto">
+<div class="w-12 h-12 rounded-full border border-gray-400 bg-black/40 backdrop-blur-sm flex items-center justify-center mb-2 group-active:bg-gray-800 transition-colors">
+<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs text-gray-200 font-medium">Open QR</span>
+</button>
+</div>
+<!-- BEGIN: Footer Section -->
+<footer class="w-full flex flex-col items-center pointer-events-auto">
+<!-- Partner Logos Row -->
+<div class="flex items-center justify-center gap-2 mb-6 px-4 flex-wrap">
+<!-- Placeholder colored blocks for logos to match the visual feel without external images -->
+<div class="h-6 w-12 bg-[#008c9e] rounded flex items-center justify-center text-[8px] font-bold">BAKONG</div>
+<div class="h-6 w-12 bg-[#00b4d8] rounded flex items-center justify-center text-[8px] font-bold">PAY</div>
+<div class="h-6 w-12 bg-[#e63946] rounded flex items-center justify-center text-[8px] font-bold">KHQR</div>
+<div class="h-6 w-10 bg-white rounded flex items-center justify-center text-[8px] font-bold text-[#1a1f71] italic">VISA</div>
+<div class="h-6 w-10 bg-white rounded flex items-center justify-center relative overflow-hidden">
+<div class="w-5 h-5 rounded-full bg-[#eb001b] absolute left-0 mix-blend-multiply opacity-80"></div>
+<div class="w-5 h-5 rounded-full bg-[#f79e1b] absolute right-0 mix-blend-multiply opacity-80"></div>
+</div>
+</div>
+<!-- Home Indicator -->
+<div class="w-1/3 h-1 bg-white/50 rounded-full mt-2"></div>
+</footer>
+<!-- END: Footer Section -->
+</div>
+<!-- END: Action & Footer Overlay -->
+</div>
+<!-- END: Mobile Device Container -->
+</body></html>
