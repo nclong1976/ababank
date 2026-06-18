@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import StatusBar from './StatusBar';
 
@@ -383,7 +383,7 @@ function ActionIcon({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <button className="flex flex-col items-center group cursor-pointer">
