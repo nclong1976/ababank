@@ -580,6 +580,7 @@ export default function Payment({
                 className="mt-4 min-h-[58px] w-full rounded-[22px] bg-gradient-to-r from-[#00bcd4] to-[#0097a7] px-6 text-base font-black tracking-[0.06em] text-white shadow-[0_6px_32px_rgba(0,188,212,0.35)] transition-all active:scale-[0.97] active:shadow-none disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 CONTINUE
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </button>
             ) : null}
 
