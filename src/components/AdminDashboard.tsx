@@ -385,7 +385,7 @@ export default function AdminDashboard({ onBack, onSelectUser, adminId, onShowPr
               <motion.div 
                 key={u.id}
                 layout
-                className={`group relative overflow-hidden bg-[#121212] border border-gray-800 rounded-2xl p-5 shadow-2xl transition-all hover:border-[#D4AF37]/30 ${u.is_locked ? 'opacity-80' : ''}`}
+                className={`group relative overflow-hidden bg-[#121212] border border-gray-800 rounded-2xl p-5 shadow-2xl transition-all hover:border-[#D4AF37]/30 will-change-transform ${u.is_locked ? 'opacity-80' : ''}`}
               >
                 {/* Status Indicator Bar */}
                 <div className={`absolute top-0 left-0 w-1 h-full ${u.is_locked ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-[#D4AF37] shadow-[0_0_10px_rgba(212,175,55,0.5)]'}`} />
